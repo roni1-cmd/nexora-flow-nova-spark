@@ -63,11 +63,8 @@ export const ChatInterface = () => {
     setInput('');
     setUploadedImage(null);
 
-    // Check if it's an image generation request
-    const isImageRequest = input.toLowerCase().includes('generate image') || 
-                          input.toLowerCase().includes('create image') ||
-                          input.toLowerCase().includes('make image') ||
-                          input.toLowerCase().includes('draw');
+    // Check if it's an image generation request (more flexible detection)
+    const isImageRequest = /\b(generate|create|make|draw|show|design|produce)\b.*\b(image|picture|photo|art|illustration|drawing)\b/i.test(input);
 
     if (isImageRequest) {
       setIsGeneratingImage(true);
@@ -132,7 +129,7 @@ export const ChatInterface = () => {
 
   const generateImage = async (prompt: string) => {
     try {
-      const cleanPrompt = prompt.replace(/generate image|create image|make image|draw/gi, '').trim();
+      const cleanPrompt = prompt.replace(/\b(generate|create|make|draw|show|design|produce)\b.*\b(image|picture|photo|art|illustration|drawing)\b/gi, '').trim();
       
       const response = await fetch('https://api.fireworks.ai/inference/v1/workflows/accounts/fireworks/models/flux-1-schnell-fp8/text_to_image', {
         method: 'POST',
@@ -197,7 +194,7 @@ export const ChatInterface = () => {
   return (
     <div className="flex flex-col h-screen bg-black text-white">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4">
+      <div className="flex items-center justify-between px-6 py-4 bg-black">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-3">
             <div className={`relative ${isGeneratingImage ? 'animate-spin' : ''}`}>
@@ -212,27 +209,28 @@ export const ChatInterface = () => {
             </div>
             <span className="text-xl font-medium text-white">nexora</span>
           </div>
+          
+          <Select value={selectedModel} onValueChange={setSelectedModel}>
+            <SelectTrigger className="w-64 bg-black border-gray-700 text-white focus:ring-0 focus:border-gray-700">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-black border-gray-700">
+              {MODELS.map((model) => (
+                <SelectItem key={model.id} value={model.id} className="text-white hover:bg-gray-800">
+                  {model.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
           {isGeneratingImage && (
             <span className="text-sm text-gray-400 italic">Generating an image, please wait</span>
           )}
         </div>
-        
-        <Select value={selectedModel} onValueChange={setSelectedModel}>
-          <SelectTrigger className="w-64 bg-gray-900 border-gray-700 text-white">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-900 border-gray-700">
-            {MODELS.map((model) => (
-              <SelectItem key={model.id} value={model.id} className="text-white hover:bg-gray-800">
-                {model.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Messages or Initial State */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {messages.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -240,12 +238,12 @@ export const ChatInterface = () => {
             </div>
           </div>
         ) : (
-          <ScrollArea className="flex-1 px-4" ref={scrollAreaRef}>
+          <div className="flex-1 overflow-y-auto px-4 relative">
             <div className="max-w-3xl mx-auto py-4 space-y-6">
               {messages.map((message) => (
                 <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {message.role === 'user' ? (
-                    <div className="max-w-xs lg:max-w-md bg-blue-600 text-white rounded-2xl px-4 py-2">
+                    <div className="max-w-xs lg:max-w-md bg-gray-800 text-white rounded-2xl px-4 py-2">
                       {message.imageUrl && (
                         <img 
                           src={message.imageUrl} 
@@ -265,7 +263,8 @@ export const ChatInterface = () => {
                           <img 
                             src={message.imageUrl} 
                             alt="Generated" 
-                            className="max-w-sm rounded-lg"
+                            className="max-w-sm rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => downloadImage(message.imageUrl!)}
                           />
                           <Button
                             onClick={() => downloadImage(message.imageUrl!)}
@@ -288,12 +287,15 @@ export const ChatInterface = () => {
                 </div>
               )}
             </div>
-          </ScrollArea>
+            {/* Fade effect for scrolling */}
+            <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-black to-transparent pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
+          </div>
         )}
       </div>
 
       {/* Input Area */}
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-4 bg-black">
         <div className="max-w-3xl mx-auto">
           {uploadedImage && (
             <div className="mb-3 flex items-center space-x-2">
@@ -308,7 +310,7 @@ export const ChatInterface = () => {
               </Button>
             </div>
           )}
-          <div className="flex items-center space-x-3 bg-gray-900 rounded-full px-4 py-3 border border-gray-700">
+          <div className="flex items-center space-x-3 bg-black rounded-full px-4 py-3 border border-gray-700">
             <Button
               onClick={() => fileInputRef.current?.click()}
               variant="ghost"
