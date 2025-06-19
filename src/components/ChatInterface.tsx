@@ -24,6 +24,14 @@ const MODELS = [
 
 const API_KEY = 'fw_3ZWXAxAD6BWE4pgQkvkAqem3';
 
+const TypingAnimation = () => (
+  <div className="flex space-x-1 p-3">
+    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+  </div>
+);
+
 export const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -189,10 +197,20 @@ export const ChatInterface = () => {
   return (
     <div className="flex flex-col h-screen bg-black text-white">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-black">
-        <div className="flex items-center space-x-3">
-          <div className={`text-xl font-semibold ${isGeneratingImage ? 'animate-pulse' : ''}`} style={{color: '#ff006e'}}>
-            Nexora
+      <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
+            <div className={`relative ${isGeneratingImage ? 'animate-spin' : ''}`}>
+              <img 
+                src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
+                alt="nexora" 
+                className="w-8 h-8"
+              />
+              {isGeneratingImage && (
+                <div className="absolute inset-0 border-2 border-transparent border-t-pink-500 rounded-full animate-spin"></div>
+              )}
+            </div>
+            <span className="text-xl font-medium text-white">nexora</span>
           </div>
           {isGeneratingImage && (
             <span className="text-sm text-gray-400 italic">Generating an image, please wait</span>
@@ -200,12 +218,12 @@ export const ChatInterface = () => {
         </div>
         
         <Select value={selectedModel} onValueChange={setSelectedModel}>
-          <SelectTrigger className="w-56 bg-black border-gray-700 text-white">
+          <SelectTrigger className="w-64 bg-gray-900 border-gray-700 text-white">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-black border-gray-700">
+          <SelectContent className="bg-gray-900 border-gray-700">
             {MODELS.map((model) => (
-              <SelectItem key={model.id} value={model.id} className="text-white hover:bg-gray-900">
+              <SelectItem key={model.id} value={model.id} className="text-white hover:bg-gray-800">
                 {model.name}
               </SelectItem>
             ))}
@@ -213,71 +231,69 @@ export const ChatInterface = () => {
         </Select>
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 px-4" ref={scrollAreaRef}>
-        <div className="max-w-3xl mx-auto py-4">
-          {messages.map((message) => (
-            <div key={message.id} className={`mb-6 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`flex items-start space-x-3 max-w-2xl ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${
-                  message.role === 'user'
-                    ? 'text-white'
-                    : 'text-white'
-                }`} style={{backgroundColor: message.role === 'user' ? '#3a86ff' : '#8338ec'}}>
-                  {message.role === 'user' ? 'U' : 'N'}
-                </div>
-                <div className={`${message.role === 'user' ? 'text-right' : 'text-left'}`}>
-                  {message.imageUrl && message.role === 'user' && (
-                    <img 
-                      src={message.imageUrl} 
-                      alt="Uploaded" 
-                      className="max-w-sm rounded-lg mb-2"
-                    />
-                  )}
-                  <div className="text-white whitespace-pre-wrap">
-                    {message.content}
-                  </div>
-                  {message.imageUrl && message.role === 'assistant' && (
-                    <div className="mt-2">
-                      <img 
-                        src={message.imageUrl} 
-                        alt="Generated" 
-                        className="max-w-sm rounded-lg"
-                      />
-                      <Button
-                        onClick={() => downloadImage(message.imageUrl!)}
-                        variant="outline"
-                        size="sm"
-                        className="mt-2 bg-gray-800 border-gray-600 hover:bg-gray-700 text-white"
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Download
-                      </Button>
+      {/* Messages or Initial State */}
+      <div className="flex-1 flex flex-col">
+        {messages.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <h1 className="text-4xl font-light text-white mb-8">What do you want to know?</h1>
+            </div>
+          </div>
+        ) : (
+          <ScrollArea className="flex-1 px-4" ref={scrollAreaRef}>
+            <div className="max-w-3xl mx-auto py-4 space-y-6">
+              {messages.map((message) => (
+                <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {message.role === 'user' ? (
+                    <div className="max-w-xs lg:max-w-md bg-blue-600 text-white rounded-2xl px-4 py-2">
+                      {message.imageUrl && (
+                        <img 
+                          src={message.imageUrl} 
+                          alt="Uploaded" 
+                          className="max-w-full rounded-lg mb-2"
+                        />
+                      )}
+                      <p className="text-sm">{message.content}</p>
+                    </div>
+                  ) : (
+                    <div className="max-w-2xl">
+                      <div className="text-white whitespace-pre-wrap text-sm leading-relaxed">
+                        {message.content}
+                      </div>
+                      {message.imageUrl && (
+                        <div className="mt-3">
+                          <img 
+                            src={message.imageUrl} 
+                            alt="Generated" 
+                            className="max-w-sm rounded-lg"
+                          />
+                          <Button
+                            onClick={() => downloadImage(message.imageUrl!)}
+                            variant="outline"
+                            size="sm"
+                            className="mt-2 bg-gray-800 border-gray-600 hover:bg-gray-700 text-white"
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            Download
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
-          ))}
-          {isLoading && (
-            <div className="mb-6 flex justify-start">
-              <div className="flex items-start space-x-3 max-w-2xl">
-                <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 text-white" style={{backgroundColor: '#8338ec'}}>
-                  N
+              ))}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <TypingAnimation />
                 </div>
-                <div className="flex space-x-1 items-center">
-                  <div className="w-2 h-2 rounded-full animate-bounce" style={{backgroundColor: '#ff006e'}}></div>
-                  <div className="w-2 h-2 rounded-full animate-bounce" style={{backgroundColor: '#8338ec', animationDelay: '0.1s'}}></div>
-                  <div className="w-2 h-2 rounded-full animate-bounce" style={{backgroundColor: '#3a86ff', animationDelay: '0.2s'}}></div>
-                </div>
-              </div>
+              )}
             </div>
-          )}
-        </div>
-      </ScrollArea>
+          </ScrollArea>
+        )}
+      </div>
 
       {/* Input Area */}
-      <div className="border-t border-gray-800 bg-black p-4">
+      <div className="px-4 pb-4">
         <div className="max-w-3xl mx-auto">
           {uploadedImage && (
             <div className="mb-3 flex items-center space-x-2">
@@ -292,12 +308,12 @@ export const ChatInterface = () => {
               </Button>
             </div>
           )}
-          <div className="flex items-center space-x-2 bg-gray-900 rounded-lg p-2">
+          <div className="flex items-center space-x-3 bg-gray-900 rounded-full px-4 py-3 border border-gray-700">
             <Button
               onClick={() => fileInputRef.current?.click()}
               variant="ghost"
               size="icon"
-              className="text-gray-400 hover:text-white hover:bg-gray-800"
+              className="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full w-8 h-8"
             >
               <Upload className="w-4 h-4" />
             </Button>
@@ -312,7 +328,7 @@ export const ChatInterface = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Message Nexora..."
+              placeholder="Message nexora..."
               className="flex-1 bg-transparent border-none text-white placeholder-gray-400 focus:ring-0 focus:outline-none"
               disabled={isLoading || isGeneratingImage}
             />
@@ -320,8 +336,7 @@ export const ChatInterface = () => {
               onClick={sendMessage}
               disabled={isLoading || isGeneratingImage || (!input.trim() && !uploadedImage)}
               size="icon"
-              className="text-white hover:bg-gray-800"
-              style={{backgroundColor: isLoading || isGeneratingImage || (!input.trim() && !uploadedImage) ? '#4a4a4a' : '#8338ec'}}
+              className="rounded-full w-8 h-8 bg-white hover:bg-gray-200 text-black disabled:bg-gray-600 disabled:text-gray-400"
             >
               <Send className="w-4 h-4" />
             </Button>
