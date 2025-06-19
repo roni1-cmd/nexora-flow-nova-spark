@@ -15,7 +15,7 @@ interface Message {
 }
 
 const MODELS = [
-  { id: 'accounts/fireworks/models/qwen3-30b-a3b', name: 'nexora PetalFlow' },
+  { id: 'accounts/fireworks/models/qwen2p5-72b-instruct', name: 'nexora PetalFlow' },
   { id: 'accounts/fireworks/models/llama4-maverick-instruct-basic', name: 'nexora Casanova Scout' },
   { id: 'accounts/fireworks/models/llama-v3p1-8b-instruct', name: 'nexora Lip Instruct' },
   { id: 'accounts/fireworks/models/deepseek-r1-basic', name: 'nexora Fluxborn Adaptive' },
