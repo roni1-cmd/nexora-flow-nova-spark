@@ -7,22 +7,22 @@
 
 @layer base {
   :root {
-    --background: 0 0% 6%;
-    --foreground: 0 0% 95%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
 
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 95%;
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
 
     --primary: 330 81% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 12%;
+    --secondary: 0 0% 6%;
     --secondary-foreground: 0 0% 90%;
 
-    --muted: 0 0% 10%;
+    --muted: 0 0% 4%;
     --muted-foreground: 0 0% 60%;
 
     --accent: 262 83% 70%;
@@ -31,11 +31,11 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 0 0% 15%;
-    --input: 0 0% 12%;
+    --border: 0 0% 12%;
+    --input: 0 0% 6%;
     --ring: 330 81% 60%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
   }
 }
 
@@ -45,7 +45,7 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-black text-white;
     background: #000000;
   }
 }
@@ -69,15 +69,6 @@
     }
   }
 
-  @keyframes spin-border {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-
   .typewriter {
     overflow: hidden;
     white-space: nowrap;
@@ -87,26 +78,5 @@
   .cursor::after {
     content: '|';
     animation: blink 1s infinite;
-  }
-
-  .gradient-text {
-    background: linear-gradient(45deg, #ff006e, #8338ec, #3a86ff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .loading-border {
-    position: relative;
-  }
-
-  .loading-border::before {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    border-radius: 50%;
-    background: linear-gradient(45deg, #ff006e, #8338ec, #3a86ff);
-    animation: spin-border 2s linear infinite;
-    z-index: -1;
   }
 }
