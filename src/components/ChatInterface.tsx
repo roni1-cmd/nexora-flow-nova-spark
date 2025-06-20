@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Upload, Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,7 +41,7 @@ const TypewriterText = ({ text }: { text: string }) => {
       const timeout = setTimeout(() => {
         setDisplayedText(prev => prev + text[currentIndex]);
         setCurrentIndex(prev => prev + 1);
-      }, 20);
+      }, 10); // Made faster: reduced from 20ms to 10ms
       return () => clearTimeout(timeout);
     }
   }, [currentIndex, text]);
@@ -311,7 +310,7 @@ export const ChatInterface = () => {
             </div>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto px-4 relative" ref={scrollAreaRef}>
+          <div className="flex-1 overflow-y-auto px-4 relative scrollbar-hide" ref={scrollAreaRef}>
             <div className="max-w-3xl mx-auto py-4 space-y-6">
               {messages.map((message) => (
                 <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -393,7 +392,7 @@ export const ChatInterface = () => {
               </Button>
             </div>
           )}
-          <div className="flex items-center space-x-3 bg-black rounded-full px-4 py-3">
+          <div className="flex items-center space-x-3 bg-black border border-white rounded-full px-4 py-3">
             <Button
               onClick={() => fileInputRef.current?.click()}
               variant="ghost"
