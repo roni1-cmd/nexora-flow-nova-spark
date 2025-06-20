@@ -99,8 +99,7 @@ const AuthScreen = ({ onSignIn }: { onSignIn: (user: User) => void }) => (
           className="w-10 h-10"
         />
         <div className="flex flex-col">
-          <div className="text-lg font-semibold text-white">NEXORA</div>
-          <div className="text-xs text-gray-400 tracking-wide">AI ASSISTANT</div>
+          <div className="text-lg font-semibold text-white">nexora</div>
         </div>
       </div>
     </header>
@@ -112,7 +111,7 @@ const AuthScreen = ({ onSignIn }: { onSignIn: (user: User) => void }) => (
         <div className="flex-1 max-w-2xl text-center lg:text-left">
           <h1 className="text-4xl lg:text-5xl font-semibold leading-tight mb-8">
             <span className="block mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              You command intelligence.
+              You command a consteallation.
             </span>
             <span className="block bg-gradient-to-r from-pink-400 to-purple-500 bg-clip-text text-transparent">
               Sign in. Rewrite what's possible.
@@ -126,8 +125,8 @@ const AuthScreen = ({ onSignIn }: { onSignIn: (user: User) => void }) => (
             onClick={() => {
               // Mock Google sign-in for demo
               onSignIn({
-                displayName: 'John Doe',
-                email: 'john.doe@gmail.com',
+                displayName: 'Test User',
+                email: 'testuser@gmail.com',
                 photoURL: 'https://lh3.googleusercontent.com/a/default-user=s96-c'
               });
             }}
@@ -144,7 +143,7 @@ const AuthScreen = ({ onSignIn }: { onSignIn: (user: User) => void }) => (
 
           <p className="text-xs text-gray-400 text-center mt-4 leading-relaxed">
             By signing up, I agree to the nexora<br/>
-            <a href="#" className="text-purple-400 hover:text-purple-300">privacy policy</a> and <a href="#" className="text-purple-400 hover:text-purple-300">terms of service</a>
+            <a href="https://coreastarstroupe.netlify.app/privacy-policy" className="text-purple-400 hover:text-purple-300">privacy policy</a> and <a href="https://coreastarstroupe.netlify.app/terms-of-service" className="text-purple-400 hover:text-purple-300">terms of service</a>
           </p>
         </div>
       </div>
@@ -152,9 +151,8 @@ const AuthScreen = ({ onSignIn }: { onSignIn: (user: User) => void }) => (
 
     {/* Footer */}
     <div className="flex justify-center gap-8 p-4 bg-white/5">
-      <a href="#" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Privacy</a>
-      <a href="#" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Terms</a>
-      <a href="#" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Help</a>
+      <a href="https://coreastarstroupe.netlify.app/privacy-policy" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Privacy</a>
+      <a href="https://coreastarstroupe.netlify.app/terms-of-service" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Terms</a>
     </div>
   </div>
 );
