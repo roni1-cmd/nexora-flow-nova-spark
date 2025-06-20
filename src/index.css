@@ -1,4 +1,6 @@
 
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -42,11 +44,13 @@
 @layer base {
   * {
     @apply border-border;
+    font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   body {
     @apply bg-black text-white;
     background: #000000;
+    font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 }
 
@@ -69,6 +73,15 @@
     }
   }
 
+  @keyframes typing {
+    0%, 50% {
+      opacity: 1;
+    }
+    51%, 100% {
+      opacity: 0.5;
+    }
+  }
+
   .typewriter {
     overflow: hidden;
     white-space: nowrap;
@@ -78,5 +91,9 @@
   .cursor::after {
     content: '|';
     animation: blink 1s infinite;
+  }
+
+  .typing-animation {
+    animation: typing 1.5s infinite;
   }
 }

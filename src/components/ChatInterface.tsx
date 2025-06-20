@@ -1,10 +1,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Upload, Download } from 'lucide-react';
+import { Send, Upload, Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 
 interface Message {
@@ -12,6 +12,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   imageUrl?: string;
+  isCode?: boolean;
 }
 
 const MODELS = [
@@ -32,13 +33,62 @@ const TypingAnimation = () => (
   </div>
 );
 
+const TypewriterText = ({ text }: { text: string }) => {
+  const [displayedText, setDisplayedText] = useState('');
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex]);
+        setCurrentIndex(prev => prev + 1);
+      }, 20);
+      return () => clearTimeout(timeout);
+    }
+  }, [currentIndex, text]);
+
+  return <span>{displayedText}</span>;
+};
+
+const CodeCanvas = ({ code }: { code: string }) => (
+  <div className="bg-gray-900 rounded-lg p-4 my-2 border border-gray-700">
+    <div className="text-xs text-gray-400 mb-2">Code</div>
+    <pre className="text-sm text-gray-100 overflow-x-auto">
+      <code>{code}</code>
+    </pre>
+  </div>
+);
+
+const ImageModal = ({ imageUrl, onClose }: { imageUrl: string; onClose: () => void }) => (
+  <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={onClose}>
+    <div className="relative max-w-4xl max-h-4xl p-4">
+      <Button
+        onClick={onClose}
+        variant="ghost"
+        size="icon"
+        className="absolute top-2 right-2 text-white hover:bg-gray-800 z-10"
+      >
+        <X className="w-6 h-6" />
+      </Button>
+      <img 
+        src={imageUrl} 
+        alt="Full screen view" 
+        className="max-w-full max-h-full object-contain rounded-lg"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  </div>
+);
+
 export const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [imageProgress, setImageProgress] = useState(0);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -49,22 +99,54 @@ export const ChatInterface = () => {
     }
   }, [messages]);
 
+  useEffect(() => {
+    if (isGeneratingImage) {
+      const interval = setInterval(() => {
+        setImageProgress(prev => {
+          if (prev >= 90) return prev;
+          return prev + Math.random() * 10;
+        });
+      }, 200);
+      return () => clearInterval(interval);
+    } else {
+      setImageProgress(0);
+    }
+  }, [isGeneratingImage]);
+
+  const detectCodeInMessage = (content: string) => {
+    const codePatterns = [
+      /```[\s\S]*?```/g,
+      /`[^`]+`/g,
+      /\b(function|const|let|var|if|else|for|while|class|import|export)\b/g,
+      /\b(def|print|return|import|class|if|else|for|while)\b/g,
+      /<[^>]+>/g
+    ];
+    return codePatterns.some(pattern => pattern.test(content));
+  };
+
+  const extractCodeBlocks = (content: string) => {
+    const codeBlockRegex = /```([\s\S]*?)```/g;
+    const matches = [...content.matchAll(codeBlockRegex)];
+    return matches.map(match => match[1].trim());
+  };
+
   const sendMessage = async () => {
     if (!input.trim() && !uploadedImage) return;
 
+    const isCodeRequest = detectCodeInMessage(input);
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: input,
       imageUrl: uploadedImage || undefined,
+      isCode: isCodeRequest,
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setUploadedImage(null);
 
-    // Check if it's an image generation request (more flexible detection)
-    const isImageRequest = /\b(generate|create|make|draw|show|design|produce)\b.*\b(image|picture|photo|art|illustration|drawing)\b/i.test(input);
+    const isImageRequest = /\b(generate|create|make|draw|show|design|produce|image|picture|photo|art|illustration|drawing)\b/i.test(input);
 
     if (isImageRequest) {
       setIsGeneratingImage(true);
@@ -75,7 +157,6 @@ export const ChatInterface = () => {
     setIsLoading(true);
 
     try {
-      // Use image recognition model if image is uploaded
       const modelToUse = uploadedImage ? 'accounts/fireworks/models/llama4-maverick-instruct-basic' : selectedModel;
 
       const response = await fetch('https://api.fireworks.ai/inference/v1/chat/completions', {
@@ -107,10 +188,12 @@ export const ChatInterface = () => {
       }
 
       const data = await response.json();
+      const responseContent = data.choices[0].message.content;
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.choices[0].message.content,
+        content: responseContent,
+        isCode: detectCodeInMessage(responseContent),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -129,8 +212,6 @@ export const ChatInterface = () => {
 
   const generateImage = async (prompt: string) => {
     try {
-      const cleanPrompt = prompt.replace(/\b(generate|create|make|draw|show|design|produce)\b.*\b(image|picture|photo|art|illustration|drawing)\b/gi, '').trim();
-      
       const response = await fetch('https://api.fireworks.ai/inference/v1/workflows/accounts/fireworks/models/flux-1-schnell-fp8/text_to_image', {
         method: 'POST',
         headers: {
@@ -138,7 +219,7 @@ export const ChatInterface = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt: cleanPrompt,
+          prompt: prompt,
         }),
       });
 
@@ -146,7 +227,7 @@ export const ChatInterface = () => {
         throw new Error('Failed to generate image');
       }
 
-      // Handle binary response for image
+      setImageProgress(100);
       const blob = await response.blob();
       const imageUrl = URL.createObjectURL(blob);
 
@@ -168,6 +249,7 @@ export const ChatInterface = () => {
       });
     } finally {
       setIsGeneratingImage(false);
+      setImageProgress(0);
     }
   };
 
@@ -192,26 +274,21 @@ export const ChatInterface = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-black text-white">
+    <div className="flex flex-col h-screen bg-black text-white font-google-sans">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 bg-black">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-3">
-            <div className={`relative ${isGeneratingImage ? 'animate-spin' : ''}`}>
-              <img 
-                src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
-                alt="nexora" 
-                className="w-8 h-8"
-              />
-              {isGeneratingImage && (
-                <div className="absolute inset-0 border-2 border-transparent border-t-pink-500 rounded-full animate-spin"></div>
-              )}
-            </div>
+            <img 
+              src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
+              alt="nexora" 
+              className="w-8 h-8"
+            />
             <span className="text-xl font-medium text-white">nexora</span>
           </div>
           
           <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger className="w-64 bg-black border-gray-700 text-white focus:ring-0 focus:border-gray-700">
+            <SelectTrigger className="w-64 bg-black border-none text-white focus:ring-0 focus:border-none">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-black border-gray-700">
@@ -222,10 +299,6 @@ export const ChatInterface = () => {
               ))}
             </SelectContent>
           </Select>
-          
-          {isGeneratingImage && (
-            <span className="text-sm text-gray-400 italic">Generating an image, please wait</span>
-          )}
         </div>
       </div>
 
@@ -238,7 +311,7 @@ export const ChatInterface = () => {
             </div>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto px-4 relative">
+          <div className="flex-1 overflow-y-auto px-4 relative" ref={scrollAreaRef}>
             <div className="max-w-3xl mx-auto py-4 space-y-6">
               {messages.map((message) => (
                 <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -256,15 +329,18 @@ export const ChatInterface = () => {
                   ) : (
                     <div className="max-w-2xl">
                       <div className="text-white whitespace-pre-wrap text-sm leading-relaxed">
-                        {message.content}
+                        <TypewriterText text={message.content} />
                       </div>
+                      {message.isCode && extractCodeBlocks(message.content).map((code, index) => (
+                        <CodeCanvas key={index} code={code} />
+                      ))}
                       {message.imageUrl && (
                         <div className="mt-3">
                           <img 
                             src={message.imageUrl} 
                             alt="Generated" 
                             className="max-w-sm rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => downloadImage(message.imageUrl!)}
+                            onClick={() => setFullScreenImage(message.imageUrl!)}
                           />
                           <Button
                             onClick={() => downloadImage(message.imageUrl!)}
@@ -286,8 +362,15 @@ export const ChatInterface = () => {
                   <TypingAnimation />
                 </div>
               )}
+              {isGeneratingImage && (
+                <div className="flex justify-start">
+                  <div className="max-w-2xl">
+                    <div className="text-white text-sm mb-2">Generating image...</div>
+                    <Progress value={imageProgress} className="w-64 h-2" />
+                  </div>
+                </div>
+              )}
             </div>
-            {/* Fade effect for scrolling */}
             <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-black to-transparent pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
           </div>
@@ -310,7 +393,7 @@ export const ChatInterface = () => {
               </Button>
             </div>
           )}
-          <div className="flex items-center space-x-3 bg-black rounded-full px-4 py-3 border border-gray-700">
+          <div className="flex items-center space-x-3 bg-black rounded-full px-4 py-3">
             <Button
               onClick={() => fileInputRef.current?.click()}
               variant="ghost"
@@ -331,7 +414,7 @@ export const ChatInterface = () => {
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
               placeholder="Message nexora..."
-              className="flex-1 bg-transparent border-none text-white placeholder-gray-400 focus:ring-0 focus:outline-none"
+              className="flex-1 bg-transparent border-none text-white placeholder-gray-400 focus:ring-0 focus:outline-none focus:border-none"
               disabled={isLoading || isGeneratingImage}
             />
             <Button
@@ -345,6 +428,14 @@ export const ChatInterface = () => {
           </div>
         </div>
       </div>
+
+      {/* Full Screen Image Modal */}
+      {fullScreenImage && (
+        <ImageModal 
+          imageUrl={fullScreenImage} 
+          onClose={() => setFullScreenImage(null)} 
+        />
+      )}
     </div>
   );
 };
