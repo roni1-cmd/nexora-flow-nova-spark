@@ -10,6 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { UserProfile } from './UserProfile';
+import { EssayCanvas } from './EssayCanvas';
+import { useUsageTracking } from '@/hooks/useUsageTracking';
 
 interface Message {
   id: string;
@@ -211,6 +213,7 @@ export const ChatInterface = () => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { trackApiCall, trackModelUsage, stats } = useUsageTracking();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
@@ -295,6 +298,15 @@ export const ChatInterface = () => {
     return content.replace(/```(?:\w+\n)?[\s\S]*?```/g, '').trim();
   };
 
+  const detectEssayRequest = (content: string) => {
+    const essayPatterns = [
+      /\b(essay|write|composition|paper|article|report|analysis)\b/i,
+      /\b(explain|describe|discuss|analyze|compare|contrast)\b.*\b(essay|paper|article)\b/i,
+      /\bwrite\s+(about|on|an?\s+essay)\b/i
+    ];
+    return essayPatterns.some(pattern => pattern.test(content));
+  };
+
   const sendMessage = async () => {
     if (!input.trim() && !uploadedImage) return;
 
@@ -306,14 +318,16 @@ export const ChatInterface = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
     setUploadedImage(null);
 
-    const isImageRequest = /\b(generate|create|make|draw|show|design|produce|image|picture|photo|art|illustration|drawing)\b/i.test(input);
+    const isImageRequest = /\b(generate|create|make|draw|show|design|produce|image|picture|photo|art|illustration|drawing)\b/i.test(currentInput);
+    const isEssayRequest = detectEssayRequest(currentInput);
 
     if (isImageRequest) {
       setIsGeneratingImage(true);
-      await generateImage(input);
+      await generateImage(currentInput);
       return;
     }
 
@@ -321,6 +335,9 @@ export const ChatInterface = () => {
 
     try {
       const modelToUse = uploadedImage ? 'accounts/fireworks/models/llama4-maverick-instruct-basic' : selectedModel;
+
+      // Track API call
+      trackApiCall(modelToUse);
 
       const response = await fetch('https://api.fireworks.ai/inference/v1/chat/completions', {
         method: 'POST',
@@ -335,13 +352,13 @@ export const ChatInterface = () => {
               role: 'user',
               content: uploadedImage 
                 ? [
-                    { type: 'text', text: input },
+                    { type: 'text', text: currentInput },
                     { type: 'image_url', image_url: { url: uploadedImage } }
                   ]
-                : input
+                : currentInput
             }
           ],
-          max_tokens: 1000,
+          max_tokens: isEssayRequest ? 2000 : 1000,
           temperature: 0.7,
         }),
       });
@@ -352,28 +369,45 @@ export const ChatInterface = () => {
 
       const data = await response.json();
       const responseContent = data.choices[0].message.content;
-      const codeBlocks = extractCodeBlocks(responseContent);
-      const cleanContent = removeCodeBlocksFromContent(responseContent);
       
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: cleanContent || responseContent,
-      };
+      // Track model usage
+      trackModelUsage(modelToUse);
 
-      setMessages(prev => [...prev, assistantMessage]);
-
-      // Add code blocks as separate messages if they exist
-      if (codeBlocks.length > 0) {
-        codeBlocks.forEach((code, index) => {
-          const codeMessage: Message = {
-            id: (Date.now() + 2 + index).toString(),
+      if (isEssayRequest) {
+        // For essay requests, use EssayCanvas
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: responseContent,
+          isCode: false,
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+      } else {
+        // For regular requests, handle code blocks
+        const codeBlocks = extractCodeBlocks(responseContent);
+        const cleanContent = removeCodeBlocksFromContent(responseContent);
+        
+        if (cleanContent.trim()) {
+          const assistantMessage: Message = {
+            id: (Date.now() + 1).toString(),
             role: 'assistant',
-            content: code,
-            isCode: true,
+            content: cleanContent,
           };
-          setMessages(prev => [...prev, codeMessage]);
-        });
+          setMessages(prev => [...prev, assistantMessage]);
+        }
+
+        // Add code blocks as separate messages if they exist
+        if (codeBlocks.length > 0) {
+          codeBlocks.forEach((code, index) => {
+            const codeMessage: Message = {
+              id: (Date.now() + 2 + index).toString(),
+              role: 'assistant',
+              content: code,
+              isCode: true,
+            };
+            setMessages(prev => [...prev, codeMessage]);
+          });
+        }
       }
 
     } catch (error) {
@@ -613,6 +647,8 @@ export const ChatInterface = () => {
                     <div className="max-w-2xl">
                       {message.isCode ? (
                         <CodeCanvas code={message.content} />
+                      ) : detectEssayRequest(message.content) && message.content.length > 500 ? (
+                        <EssayCanvas content={message.content} />
                       ) : (
                         <>
                           <div className="text-white whitespace-pre-wrap text-sm leading-relaxed">
