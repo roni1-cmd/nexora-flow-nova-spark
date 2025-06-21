@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Upload, Download, X, ChevronDown, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -237,6 +238,31 @@ export const ChatInterface = () => {
     }
   }, [isGeneratingImage]);
 
+  // Add clipboard paste support
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          const blob = item.getAsFile();
+          if (blob) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              setUploadedImage(e.target?.result as string);
+            };
+            reader.readAsDataURL(blob);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, []);
+
   const detectCodeInMessage = (content: string) => {
     const codePatterns = [
       /```[\s\S]*?```/g,
@@ -252,6 +278,10 @@ export const ChatInterface = () => {
     const codeBlockRegex = /```([\s\S]*?)```/g;
     const matches = [...content.matchAll(codeBlockRegex)];
     return matches.map(match => match[1].trim());
+  };
+
+  const removeCodeBlocksFromContent = (content: string) => {
+    return content.replace(/```[\s\S]*?```/g, '').trim();
   };
 
   const sendMessage = async () => {
@@ -313,11 +343,13 @@ export const ChatInterface = () => {
 
       const data = await response.json();
       const responseContent = data.choices[0].message.content;
+      const hasCode = detectCodeInMessage(responseContent);
+      
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: responseContent,
-        isCode: detectCodeInMessage(responseContent),
+        content: removeCodeBlocksFromContent(responseContent),
+        isCode: hasCode,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -406,6 +438,10 @@ export const ChatInterface = () => {
     }
   };
 
+  const handleUpgradeClick = () => {
+    window.open('https://coreastarstroupe.netlify.app/pricing', '_blank');
+  };
+
   if (authLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-black text-white">
@@ -446,42 +482,52 @@ export const ChatInterface = () => {
           </Select>
         </div>
 
-        {/* User Profile Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center space-x-2 hover:bg-gray-800">
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={user.photoURL} alt={user.displayName} />
-                <AvatarFallback className="bg-purple-600 text-white">
-                  {user.displayName.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-white">{user.displayName}</span>
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white" align="end">
-            <DropdownMenuItem className="flex items-center space-x-2 hover:bg-gray-800">
-              <Avatar className="w-6 h-6">
-                <AvatarImage src={user.photoURL} alt={user.displayName} />
-                <AvatarFallback className="bg-purple-600 text-white text-xs">
-                  {user.displayName.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col">
-                <span className="font-medium">{user.displayName}</span>
-                <span className="text-xs text-gray-400">{user.email}</span>
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={handleSignOut}
-              className="flex items-center space-x-2 hover:bg-gray-800 text-red-400"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Sign out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Right side with Upgrade button and User Profile Dropdown */}
+        <div className="flex items-center space-x-4">
+          <Button
+            onClick={handleUpgradeClick}
+            variant="outline"
+            className="border-purple-500 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300"
+          >
+            Upgrade
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center space-x-2 hover:bg-gray-800">
+                <Avatar className="w-8 h-8">
+                  <AvatarImage src={user.photoURL} alt={user.displayName} />
+                  <AvatarFallback className="bg-purple-600 text-white">
+                    {user.displayName.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-white">{user.displayName}</span>
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white" align="end">
+              <DropdownMenuItem className="flex items-center space-x-2 hover:bg-gray-800">
+                <Avatar className="w-6 h-6">
+                  <AvatarImage src={user.photoURL} alt={user.displayName} />
+                  <AvatarFallback className="bg-purple-600 text-white text-xs">
+                    {user.displayName.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <span className="font-medium">{user.displayName}</span>
+                  <span className="text-xs text-gray-400">{user.email}</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={handleSignOut}
+                className="flex items-center space-x-2 hover:bg-gray-800 text-red-400"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sign out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Messages or Initial State */}
@@ -562,7 +608,7 @@ export const ChatInterface = () => {
       </div>
 
       {/* Input Area */}
-      <div className="px-4 pb-6 bg-black">
+      <div className="px-4 pb-6 pt-8 bg-black">
         <div className="max-w-3xl mx-auto">
           {uploadedImage && (
             <div className="mb-3 flex items-center space-x-2">
@@ -597,7 +643,7 @@ export const ChatInterface = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Message nexora..."
+              placeholder="Message nexora... (or paste an image)"
               className="flex-1 bg-transparent border-none text-white placeholder-gray-400 focus:ring-0 focus:outline-none focus:border-none focus-visible:ring-0 focus-visible:ring-offset-0"
               disabled={isLoading || isGeneratingImage}
             />
