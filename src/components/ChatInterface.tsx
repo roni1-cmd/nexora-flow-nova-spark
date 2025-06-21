@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Upload, Download, X, ChevronDown, LogOut } from 'lucide-react';
+import { Send, Upload, Download, X, ChevronDown, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { UserProfile } from './UserProfile';
 
 interface Message {
   id: string;
@@ -76,9 +76,19 @@ const TypewriterText = ({ text }: { text: string }) => {
 };
 
 const CodeCanvas = ({ code }: { code: string }) => (
-  <div className="bg-gray-900 rounded-lg p-4 my-2 border border-gray-700">
-    <div className="text-xs text-gray-400 mb-2">Code</div>
-    <pre className="text-sm text-gray-100 overflow-x-auto">
+  <div className="bg-gray-900 rounded-lg p-4 my-3 border border-gray-700">
+    <div className="flex items-center justify-between mb-3">
+      <div className="text-xs text-gray-400 font-medium">Code</div>
+      <Button
+        onClick={() => navigator.clipboard.writeText(code)}
+        variant="ghost"
+        size="sm"
+        className="text-gray-400 hover:text-white h-7 px-2"
+      >
+        Copy
+      </Button>
+    </div>
+    <pre className="text-sm text-gray-100 overflow-x-auto whitespace-pre-wrap">
       <code>{code}</code>
     </pre>
   </div>
@@ -197,6 +207,7 @@ export const ChatInterface = () => {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [showProfile, setShowProfile] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -275,25 +286,23 @@ export const ChatInterface = () => {
   };
 
   const extractCodeBlocks = (content: string) => {
-    const codeBlockRegex = /```([\s\S]*?)```/g;
+    const codeBlockRegex = /```(?:\w+\n)?([\s\S]*?)```/g;
     const matches = [...content.matchAll(codeBlockRegex)];
     return matches.map(match => match[1].trim());
   };
 
   const removeCodeBlocksFromContent = (content: string) => {
-    return content.replace(/```[\s\S]*?```/g, '').trim();
+    return content.replace(/```(?:\w+\n)?[\s\S]*?```/g, '').trim();
   };
 
   const sendMessage = async () => {
     if (!input.trim() && !uploadedImage) return;
 
-    const isCodeRequest = detectCodeInMessage(input);
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: input,
       imageUrl: uploadedImage || undefined,
-      isCode: isCodeRequest,
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -343,16 +352,29 @@ export const ChatInterface = () => {
 
       const data = await response.json();
       const responseContent = data.choices[0].message.content;
-      const hasCode = detectCodeInMessage(responseContent);
+      const codeBlocks = extractCodeBlocks(responseContent);
+      const cleanContent = removeCodeBlocksFromContent(responseContent);
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: removeCodeBlocksFromContent(responseContent),
-        isCode: hasCode,
+        content: cleanContent || responseContent,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Add code blocks as separate messages if they exist
+      if (codeBlocks.length > 0) {
+        codeBlocks.forEach((code, index) => {
+          const codeMessage: Message = {
+            id: (Date.now() + 2 + index).toString(),
+            role: 'assistant',
+            content: code,
+            isCode: true,
+          };
+          setMessages(prev => [...prev, codeMessage]);
+        });
+      }
 
     } catch (error) {
       console.error('Error sending message:', error);
@@ -433,6 +455,7 @@ export const ChatInterface = () => {
     try {
       await signOut(auth);
       setMessages([]);
+      setShowProfile(false);
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -452,6 +475,29 @@ export const ChatInterface = () => {
 
   if (!user) {
     return <AuthScreen onSignIn={() => {}} />;
+  }
+
+  if (showProfile) {
+    return (
+      <div className="flex flex-col h-screen bg-black text-white">
+        {/* Header for Profile */}
+        <div className="flex items-center justify-between px-6 py-4 bg-black border-b border-gray-800">
+          <Button
+            onClick={() => setShowProfile(false)}
+            variant="ghost"
+            className="text-white hover:bg-gray-800"
+          >
+            ← Back to Chat
+          </Button>
+          <span className="text-xl font-medium">User Profile</span>
+          <div></div>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto">
+          <UserProfile user={user} />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -519,6 +565,13 @@ export const ChatInterface = () => {
                 </div>
               </DropdownMenuItem>
               <DropdownMenuItem 
+                onClick={() => setShowProfile(true)}
+                className="flex items-center space-x-2 hover:bg-gray-800"
+              >
+                <User className="w-4 h-4" />
+                <span>View Profile</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem 
                 onClick={handleSignOut}
                 className="flex items-center space-x-2 hover:bg-gray-800 text-red-400"
               >
@@ -558,30 +611,33 @@ export const ChatInterface = () => {
                     </div>
                   ) : (
                     <div className="max-w-2xl">
-                      <div className="text-white whitespace-pre-wrap text-sm leading-relaxed">
-                        <TypewriterText text={message.content} />
-                      </div>
-                      {message.isCode && extractCodeBlocks(message.content).map((code, index) => (
-                        <CodeCanvas key={index} code={code} />
-                      ))}
-                      {message.imageUrl && (
-                        <div className="mt-3">
-                          <img 
-                            src={message.imageUrl} 
-                            alt="Generated" 
-                            className="max-w-sm rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => setFullScreenImage(message.imageUrl!)}
-                          />
-                          <Button
-                            onClick={() => downloadImage(message.imageUrl!)}
-                            variant="outline"
-                            size="sm"
-                            className="mt-2 bg-gray-800 border-gray-600 hover:bg-gray-700 text-white"
-                          >
-                            <Download className="w-4 h-4 mr-2" />
-                            Download
-                          </Button>
-                        </div>
+                      {message.isCode ? (
+                        <CodeCanvas code={message.content} />
+                      ) : (
+                        <>
+                          <div className="text-white whitespace-pre-wrap text-sm leading-relaxed">
+                            <TypewriterText text={message.content} />
+                          </div>
+                          {message.imageUrl && (
+                            <div className="mt-3">
+                              <img 
+                                src={message.imageUrl} 
+                                alt="Generated" 
+                                className="max-w-sm rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => setFullScreenImage(message.imageUrl!)}
+                              />
+                              <Button
+                                onClick={() => downloadImage(message.imageUrl!)}
+                                variant="outline"
+                                size="sm"
+                                className="mt-2 bg-gray-800 border-gray-600 hover:bg-gray-700 text-white"
+                              >
+                                <Download className="w-4 h-4 mr-2" />
+                                Download
+                              </Button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
@@ -608,7 +664,7 @@ export const ChatInterface = () => {
       </div>
 
       {/* Input Area */}
-      <div className="px-4 pb-6 pt-8 bg-black">
+      <div className="px-4 pb-6 pt-12 bg-black">
         <div className="max-w-3xl mx-auto">
           {uploadedImage && (
             <div className="mb-3 flex items-center space-x-2">
@@ -643,7 +699,7 @@ export const ChatInterface = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Message nexora... (or paste an image)"
+              placeholder="Message nexora..."
               className="flex-1 bg-transparent border-none text-white placeholder-gray-400 focus:ring-0 focus:outline-none focus:border-none focus-visible:ring-0 focus-visible:ring-offset-0"
               disabled={isLoading || isGeneratingImage}
             />
