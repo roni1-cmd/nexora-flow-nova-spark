@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 
 interface UsageData {
@@ -56,7 +57,7 @@ export const useUsageTracking = () => {
       
       // Keep only last 7 days
       newStats.usageData = newStats.usageData
-        .sort((a, b) => new Date(b.date).getTime - new Date(a.date).getTime())
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 7)
         .reverse();
       

@@ -143,20 +143,20 @@ const AuthScreen = ({ onSignIn }: { onSignIn: () => void }) => {
           <img 
             src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
             alt="nexora" 
-            className="w-10 h-10"
+            className="w-8 h-8 md:w-10 md:h-10"
           />
           <div className="flex flex-col">
-            <div className="text-lg font-semibold text-white">nexora</div>
+            <div className="text-lg md:text-xl font-semibold text-white">nexora</div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center px-4">
-        <div className="flex flex-col lg:flex-row items-center justify-center gap-10 max-w-6xl w-full">
+        <div className="flex flex-col lg:flex-row items-center justify-center gap-6 md:gap-10 max-w-6xl w-full">
           {/* Left Section */}
           <div className="flex-1 max-w-2xl text-center lg:text-left">
-            <h1 className="text-4xl lg:text-5xl font-semibold leading-tight mb-8">
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-semibold leading-tight mb-6 md:mb-8">
               <span className="block mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
                 You command a constellation.
               </span>
@@ -167,7 +167,7 @@ const AuthScreen = ({ onSignIn }: { onSignIn: () => void }) => {
           </div>
 
           {/* Right Section */}
-          <div className="flex flex-col gap-4 min-w-80 max-w-sm w-full">
+          <div className="flex flex-col gap-4 w-full max-w-sm">
             <button 
               onClick={handleGoogleSignIn}
               className="flex items-center justify-center gap-3 p-4 border border-white/20 rounded-3xl bg-white/5 hover:bg-blue-500/10 hover:border-blue-500/40 transition-all duration-200 text-white"
@@ -178,10 +178,10 @@ const AuthScreen = ({ onSignIn }: { onSignIn: () => void }) => {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              Sign in with Google
+              <span className="text-sm md:text-base">Sign in with Google</span>
             </button>
 
-            <p className="text-xs text-gray-400 text-center mt-4 leading-relaxed">
+            <p className="text-xs text-gray-400 text-center mt-4 leading-relaxed px-2">
               By signing up, I agree to the nexora<br/>
               <a href="https://coreastarstroupe.netlify.app/privacy-policy" className="text-purple-400 hover:text-purple-300">privacy policy</a> and <a href="https://coreastarstroupe.netlify.app/terms-of-service" className="text-purple-400 hover:text-purple-300">terms of service</a>
             </p>
@@ -190,7 +190,7 @@ const AuthScreen = ({ onSignIn }: { onSignIn: () => void }) => {
       </div>
 
       {/* Footer */}
-      <div className="flex justify-center gap-8 p-4 bg-white/5">
+      <div className="flex justify-center gap-6 md:gap-8 p-4 bg-white/5">
         <a href="https://coreastarstroupe.netlify.app/privacy-policy" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Privacy</a>
         <a href="https://coreastarstroupe.netlify.app/terms-of-service" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Terms</a>
       </div>
@@ -515,7 +515,7 @@ export const ChatInterface = () => {
     return (
       <div className="flex flex-col h-screen bg-black text-white">
         {/* Header for Profile */}
-        <div className="flex items-center justify-between px-6 py-4 bg-black border-b border-gray-800">
+        <div className="flex items-center justify-between px-4 md:px-6 py-4 bg-black border-b border-gray-800">
           <Button
             onClick={() => setShowProfile(false)}
             variant="ghost"
@@ -523,7 +523,7 @@ export const ChatInterface = () => {
           >
             ← Back to Chat
           </Button>
-          <span className="text-xl font-medium">User Profile</span>
+          <span className="text-lg md:text-xl font-medium">User Profile</span>
           <div></div>
         </div>
         
@@ -537,24 +537,24 @@ export const ChatInterface = () => {
   return (
     <div className="flex flex-col h-screen bg-black text-white font-google-sans">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 bg-black">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-3">
+      <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black border-b border-gray-800 md:border-none">
+        <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
+          <div className="flex items-center space-x-2 md:space-x-3">
             <img 
               src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
               alt="nexora" 
-              className="w-8 h-8"
+              className="w-6 h-6 md:w-8 md:h-8 flex-shrink-0"
             />
-            <span className="text-xl font-medium text-white">nexora</span>
+            <span className="text-lg md:text-xl font-medium text-white hidden sm:block">nexora</span>
           </div>
           
           <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger className="w-64 bg-black border-none text-white focus:ring-0 focus:border-none">
+            <SelectTrigger className="w-32 md:w-64 bg-black border-none text-white focus:ring-0 focus:border-none text-xs md:text-sm">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-black border-gray-700">
+            <SelectContent className="bg-black border-gray-700 z-50">
               {MODELS.map((model) => (
-                <SelectItem key={model.id} value={model.id} className="text-white hover:bg-gray-800">
+                <SelectItem key={model.id} value={model.id} className="text-white hover:bg-gray-800 text-xs md:text-sm">
                   {model.name}
                 </SelectItem>
               ))}
@@ -563,29 +563,30 @@ export const ChatInterface = () => {
         </div>
 
         {/* Right side with Upgrade button and User Profile Dropdown */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
           <Button
             onClick={handleUpgradeClick}
             variant="outline"
-            className="border-purple-500 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300"
+            size="sm"
+            className="border-purple-500 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 text-xs md:text-sm px-2 md:px-4"
           >
             Upgrade
           </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center space-x-2 hover:bg-gray-800">
-                <Avatar className="w-8 h-8">
+              <Button variant="ghost" className="flex items-center space-x-1 md:space-x-2 hover:bg-gray-800 p-1 md:p-2">
+                <Avatar className="w-6 h-6 md:w-8 md:h-8">
                   <AvatarImage src={user.photoURL} alt={user.displayName} />
-                  <AvatarFallback className="bg-purple-600 text-white">
+                  <AvatarFallback className="bg-purple-600 text-white text-xs md:text-sm">
                     {user.displayName.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-white">{user.displayName}</span>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <span className="text-white text-sm md:text-base hidden md:block">{user.displayName}</span>
+                <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white" align="end">
+            <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white z-50" align="end">
               <DropdownMenuItem className="flex items-center space-x-2 hover:bg-gray-800">
                 <Avatar className="w-6 h-6">
                   <AvatarImage src={user.photoURL} alt={user.displayName} />
@@ -620,20 +621,20 @@ export const ChatInterface = () => {
       {/* Messages or Initial State */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {messages.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center px-4">
             <div className="text-center">
-              <h1 className="text-4xl font-light text-white mb-8">
+              <h1 className="text-2xl md:text-4xl font-light text-white mb-6 md:mb-8">
                 What do you want to know, <span className="text-purple-400">{user.displayName}</span>?
               </h1>
             </div>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto px-4 relative scrollbar-hide" ref={scrollAreaRef}>
-            <div className="max-w-3xl mx-auto py-4 space-y-6">
+          <div className="flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide" ref={scrollAreaRef}>
+            <div className="max-w-3xl mx-auto py-4 space-y-4 md:space-y-6">
               {messages.map((message) => (
                 <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {message.role === 'user' ? (
-                    <div className="max-w-xs lg:max-w-md bg-gray-800 text-white rounded-2xl px-4 py-2">
+                    <div className="max-w-[85%] md:max-w-xs lg:max-w-md bg-gray-800 text-white rounded-2xl px-3 md:px-4 py-2">
                       {message.imageUrl && (
                         <img 
                           src={message.imageUrl} 
@@ -644,7 +645,7 @@ export const ChatInterface = () => {
                       <p className="text-sm">{message.content}</p>
                     </div>
                   ) : (
-                    <div className="max-w-2xl">
+                    <div className="max-w-[95%] md:max-w-2xl">
                       {message.isCode ? (
                         <CodeCanvas code={message.content} />
                       ) : detectEssayRequest(message.content) && message.content.length > 500 ? (
@@ -659,7 +660,7 @@ export const ChatInterface = () => {
                               <img 
                                 src={message.imageUrl} 
                                 alt="Generated" 
-                                className="max-w-sm rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                                className="max-w-full md:max-w-sm rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
                                 onClick={() => setFullScreenImage(message.imageUrl!)}
                               />
                               <Button
@@ -688,7 +689,7 @@ export const ChatInterface = () => {
                 <div className="flex justify-start">
                   <div className="max-w-2xl">
                     <div className="text-white text-sm mb-2">Generating image...</div>
-                    <Progress value={imageProgress} className="w-64 h-2" />
+                    <Progress value={imageProgress} className="w-48 md:w-64 h-2" />
                   </div>
                 </div>
               )}
@@ -700,29 +701,29 @@ export const ChatInterface = () => {
       </div>
 
       {/* Input Area */}
-      <div className="px-4 pb-6 pt-12 bg-black">
+      <div className="px-2 md:px-4 pb-4 md:pb-6 pt-6 md:pt-12 bg-black">
         <div className="max-w-3xl mx-auto">
           {uploadedImage && (
             <div className="mb-3 flex items-center space-x-2">
-              <img src={uploadedImage} alt="Preview" className="w-12 h-12 rounded object-cover" />
+              <img src={uploadedImage} alt="Preview" className="w-10 h-10 md:w-12 md:h-12 rounded object-cover" />
               <Button
                 onClick={() => setUploadedImage(null)}
                 variant="ghost"
                 size="sm"
-                className="text-red-400 hover:text-red-300 hover:bg-gray-900"
+                className="text-red-400 hover:text-red-300 hover:bg-gray-900 text-xs md:text-sm"
               >
                 Remove
               </Button>
             </div>
           )}
-          <div className="flex items-center space-x-3 bg-black border border-white rounded-full px-4 py-3">
+          <div className="flex items-center space-x-2 md:space-x-3 bg-black border border-white rounded-full px-3 md:px-4 py-2 md:py-3">
             <Button
               onClick={() => fileInputRef.current?.click()}
               variant="ghost"
               size="icon"
-              className="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full w-8 h-8"
+              className="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full w-6 h-6 md:w-8 md:h-8 flex-shrink-0"
             >
-              <Upload className="w-4 h-4" />
+              <Upload className="w-3 h-3 md:w-4 md:h-4" />
             </Button>
             <Input
               ref={fileInputRef}
@@ -736,16 +737,16 @@ export const ChatInterface = () => {
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
               placeholder="Message nexora..."
-              className="flex-1 bg-transparent border-none text-white placeholder-gray-400 focus:ring-0 focus:outline-none focus:border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="flex-1 bg-transparent border-none text-white placeholder-gray-400 focus:ring-0 focus:outline-none focus:border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm md:text-base"
               disabled={isLoading || isGeneratingImage}
             />
             <Button
               onClick={sendMessage}
               disabled={isLoading || isGeneratingImage || (!input.trim() && !uploadedImage)}
               size="icon"
-              className="rounded-full w-8 h-8 bg-white hover:bg-gray-200 text-black disabled:bg-gray-600 disabled:text-gray-400"
+              className="rounded-full w-6 h-6 md:w-8 md:h-8 bg-white hover:bg-gray-200 text-black disabled:bg-gray-600 disabled:text-gray-400 flex-shrink-0"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-3 h-3 md:w-4 md:h-4" />
             </Button>
           </div>
         </div>
