@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -330,7 +331,6 @@ const ChatInterface = () => {
 
       {showProfile && (
         <UserProfile 
-          isOpen={showProfile} 
           onClose={() => setShowProfile(false)} 
           stats={stats}
         />
