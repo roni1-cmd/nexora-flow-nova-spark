@@ -41,7 +41,7 @@ interface AIPromptInputProps {
 const NEXORA_SVG = (
     <div>
         <img 
-            src="Nexora.png" 
+            src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
             alt="Nexora" 
             className="w-4 h-4"
         />
