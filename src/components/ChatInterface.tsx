@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Upload, Download, X, ChevronDown, LogOut, User } from 'lucide-react';
+import { Download, X, ChevronDown, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,6 +10,8 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
 import { UserProfile } from './UserProfile';
 import { EssayCanvas } from './EssayCanvas';
 import { useUsageTracking } from '@/hooks/useUsageTracking';
+import AIPromptInput from './AIPromptInput';
+import AITextLoading from './AITextLoading';
 
 interface Message {
   id: string;
@@ -465,15 +465,12 @@ export const ChatInterface = () => {
     }
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setUploadedImage(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleImageUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setUploadedImage(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const downloadImage = (imageUrl: string) => {
@@ -547,19 +544,6 @@ export const ChatInterface = () => {
             />
             <span className="text-lg md:text-xl font-medium text-white hidden sm:block">nexora</span>
           </div>
-          
-          <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger className="w-32 md:w-64 bg-black border-none text-white focus:ring-0 focus:border-none text-xs md:text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-black border-gray-700 z-50">
-              {MODELS.map((model) => (
-                <SelectItem key={model.id} value={model.id} className="text-white hover:bg-gray-800 text-xs md:text-sm">
-                  {model.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         {/* Right side with Upgrade button and User Profile Dropdown */}
@@ -682,7 +666,7 @@ export const ChatInterface = () => {
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <TypingAnimation />
+                  <AITextLoading texts={["Thinking...", "Processing...", "Analyzing...", "Computing...", "Almost..."]} />
                 </div>
               )}
               {isGeneratingImage && (
@@ -703,52 +687,18 @@ export const ChatInterface = () => {
       {/* Input Area */}
       <div className="px-2 md:px-4 pb-4 md:pb-6 pt-6 md:pt-12 bg-black">
         <div className="max-w-3xl mx-auto">
-          {uploadedImage && (
-            <div className="mb-3 flex items-center space-x-2">
-              <img src={uploadedImage} alt="Preview" className="w-10 h-10 md:w-12 md:h-12 rounded object-cover" />
-              <Button
-                onClick={() => setUploadedImage(null)}
-                variant="ghost"
-                size="sm"
-                className="text-red-400 hover:text-red-300 hover:bg-gray-900 text-xs md:text-sm"
-              >
-                Remove
-              </Button>
-            </div>
-          )}
-          <div className="flex items-center space-x-2 md:space-x-3 bg-black border border-white rounded-full px-3 md:px-4 py-2 md:py-3">
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              variant="ghost"
-              size="icon"
-              className="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full w-6 h-6 md:w-8 md:h-8 flex-shrink-0"
-            >
-              <Upload className="w-3 h-3 md:w-4 md:h-4" />
-            </Button>
-            <Input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="hidden"
-            />
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Message nexora..."
-              className="flex-1 bg-transparent border-none text-white placeholder-gray-400 focus:ring-0 focus:outline-none focus:border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm md:text-base"
-              disabled={isLoading || isGeneratingImage}
-            />
-            <Button
-              onClick={sendMessage}
-              disabled={isLoading || isGeneratingImage || (!input.trim() && !uploadedImage)}
-              size="icon"
-              className="rounded-full w-6 h-6 md:w-8 md:h-8 bg-white hover:bg-gray-200 text-black disabled:bg-gray-600 disabled:text-gray-400 flex-shrink-0"
-            >
-              <Send className="w-3 h-3 md:w-4 md:h-4" />
-            </Button>
-          </div>
+          <AIPromptInput
+            value={input}
+            onChange={setInput}
+            onSendMessage={sendMessage}
+            onImageUpload={handleImageUpload}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            models={MODELS}
+            disabled={isLoading || isGeneratingImage}
+            uploadedImage={uploadedImage}
+            onRemoveImage={() => setUploadedImage(null)}
+          />
         </div>
       </div>
 
