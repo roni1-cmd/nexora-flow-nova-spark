@@ -9,6 +9,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { UserProfile } from './UserProfile';
 import { EssayCanvas } from './EssayCanvas';
+import { EssayModal } from './EssayModal';
 import { useUsageTracking } from '@/hooks/useUsageTracking';
 import AIPromptInput from './AIPromptInput';
 import AITextLoading from './AITextLoading';
@@ -19,6 +20,7 @@ interface Message {
   content: string;
   imageUrl?: string;
   isCode?: boolean;
+  isEssay?: boolean;
 }
 
 interface User {
@@ -210,6 +212,8 @@ export const ChatInterface = () => {
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
+  const [essayModalOpen, setEssayModalOpen] = useState(false);
+  const [currentEssayContent, setCurrentEssayContent] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -373,13 +377,16 @@ export const ChatInterface = () => {
       // Track model usage
       trackModelUsage(modelToUse);
 
-      if (isEssayRequest) {
-        // For essay requests, use EssayCanvas
+      if (isEssayRequest && responseContent.length > 500) {
+        // For essay requests, show in modal
+        setCurrentEssayContent(responseContent);
+        setEssayModalOpen(true);
+        
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: responseContent,
-          isCode: false,
+          isEssay: true,
         };
         setMessages(prev => [...prev, assistantMessage]);
       } else {
@@ -632,8 +639,25 @@ export const ChatInterface = () => {
                     <div className="max-w-[95%] md:max-w-2xl">
                       {message.isCode ? (
                         <CodeCanvas code={message.content} />
-                      ) : detectEssayRequest(message.content) && message.content.length > 500 ? (
-                        <EssayCanvas content={message.content} />
+                      ) : message.isEssay ? (
+                        <div className="bg-gray-900 rounded-lg p-3 md:p-4 my-3 border border-gray-700">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="text-xs text-gray-400 font-medium">Essay Generated</div>
+                            <Button
+                              onClick={() => {
+                                setCurrentEssayContent(message.content);
+                                setEssayModalOpen(true);
+                              }}
+                              size="sm"
+                              className="bg-purple-600 hover:bg-purple-700 h-6 md:h-7 px-2 text-xs"
+                            >
+                              Open in Editor
+                            </Button>
+                          </div>
+                          <div className="text-xs md:text-sm text-gray-300 line-clamp-4">
+                            {message.content.substring(0, 200)}...
+                          </div>
+                        </div>
                       ) : (
                         <>
                           <div className="text-white whitespace-pre-wrap text-sm leading-relaxed">
@@ -701,6 +725,15 @@ export const ChatInterface = () => {
           />
         </div>
       </div>
+
+      {/* Essay Modal */}
+      <EssayModal
+        isOpen={essayModalOpen}
+        onClose={() => setEssayModalOpen(false)}
+        content={currentEssayContent}
+        onContentChange={setCurrentEssayContent}
+        title="Essay Editor"
+      />
 
       {/* Full Screen Image Modal */}
       {fullScreenImage && (
