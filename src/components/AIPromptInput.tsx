@@ -23,7 +23,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import Anthropic from "@/components/icons/anthropic";
 import AnthropicDark from "@/components/icons/anthropic-dark";
 
