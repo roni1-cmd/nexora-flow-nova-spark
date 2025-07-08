@@ -26,7 +26,7 @@ export default function AITextLoading({
         "Thinking...",
         "Processing...",
         "Analyzing...",
-        "Computing...",
+        "Stay still...",
         "Almost...",
     ],
     className,
