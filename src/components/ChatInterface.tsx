@@ -603,7 +603,7 @@ export const ChatInterface = () => {
       </div>
 
       {/* Messages or Initial State */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
         {messages.length === 0 ? (
           <div className="flex-1 flex items-center justify-center px-4">
             <div className="text-center">
@@ -678,14 +678,14 @@ export const ChatInterface = () => {
                 </div>
               )}
             </div>
-            <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-black to-transparent pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
+            {/* Fade gradient overlay */}
+            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none"></div>
           </div>
         )}
       </div>
 
       {/* Input Area */}
-      <div className="px-2 md:px-4 pb-4 md:pb-6 pt-6 md:pt-12 bg-black">
+      <div className="px-2 md:px-4 pb-4 md:pb-6 pt-2 bg-black">
         <div className="max-w-3xl mx-auto">
           <AIPromptInput
             value={input}
