@@ -43,9 +43,9 @@ export default function AITextLoading({
     }, [interval, texts.length]);
 
     return (
-        <div className="flex items-center justify-center p-8">
+        <div className="flex items-center justify-center p-4">
             <motion.div
-                className="relative px-4 py-2 w-full"
+                className="relative px-2 py-1 w-full"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.4 }}
@@ -53,13 +53,13 @@ export default function AITextLoading({
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={currentTextIndex}
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{
                             opacity: 1,
                             y: 0,
                             backgroundPosition: ["200% center", "-200% center"],
                         }}
-                        exit={{ opacity: 0, y: -20 }}
+                        exit={{ opacity: 0, y: -10 }}
                         transition={{
                             opacity: { duration: 0.3 },
                             y: { duration: 0.3 },
@@ -70,7 +70,7 @@ export default function AITextLoading({
                             },
                         }}
                         className={cn(
-                            "flex justify-center text-3xl font-bold bg-gradient-to-r from-white via-gray-300 to-white bg-[length:200%_100%] bg-clip-text text-transparent whitespace-nowrap min-w-max font-google-sans",
+                            "flex justify-center text-lg font-medium bg-gradient-to-r from-white via-gray-300 to-white bg-[length:200%_100%] bg-clip-text text-transparent whitespace-nowrap min-w-max font-google-sans",
                             className
                         )}
                     >
