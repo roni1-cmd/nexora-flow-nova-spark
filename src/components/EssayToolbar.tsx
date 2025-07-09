@@ -67,7 +67,7 @@ const lineVariants = {
     },
 };
 
-const transition = { type: "spring", bounce: 0, duration: 0.4 };
+const transition = { type: "spring" as const, bounce: 0, duration: 0.4 };
 
 export function EssayToolbar({
     className,

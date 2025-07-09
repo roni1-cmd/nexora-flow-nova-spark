@@ -78,7 +78,7 @@ const TypewriterText = ({ text }: { text: string }) => {
 
   // Format the text to handle markdown-like formatting
   const formatText = (text: string) => {
-    // Convert ## to bold text
+    // Convert ## to bold text with proper spacing
     return text.replace(/##\s*(.*?)(?=\n|$)/g, '<strong>$1</strong>');
   };
 
@@ -324,19 +324,6 @@ export const ChatInterface = () => {
     return content.replace(/```(?:\w+\n)?[\s\S]*?```/g, '').trim();
   };
 
-  const detectEssayRequest = (content: string) => {
-    const essayPatterns = [
-      /\bessay\b/i,
-      /\bwrite.*essay\b/i,
-      /\bcomposition\b/i,
-      /\bpaper\b/i,
-      /\barticle\b/i,
-      /\breport\b/i,
-      /\banalysis\b/i
-    ];
-    return essayPatterns.some(pattern => pattern.test(content));
-  };
-
   const detectImageRequest = (content: string) => {
     const imagePatterns = [
       /\bimage\b/i,
@@ -346,9 +333,27 @@ export const ChatInterface = () => {
       /\bcreate.*image\b/i,
       /\bmake.*image\b/i,
       /\bdraw\b/i,
-      /\billustration\b/i
+      /\billustration\b/i,
+      /\bsketch\b/i,
+      /\bvisual\b/i
     ];
     return imagePatterns.some(pattern => pattern.test(content));
+  };
+
+  const detectEssayRequest = (content: string) => {
+    const essayPatterns = [
+      /\bessay\b/i,
+      /\bwrite.*essay\b/i,
+      /\bcomposition\b/i,
+      /\bpaper\b/i,
+      /\barticle\b/i,
+      /\breport\b/i,
+      /\banalysis\b/i,
+      /\bwrite.*about\b/i,
+      /\bthesis\b/i,
+      /\bdissertation\b/i
+    ];
+    return essayPatterns.some(pattern => pattern.test(content));
   };
 
   const sendMessage = async () => {
@@ -391,13 +396,14 @@ export const ChatInterface = () => {
     const isImageRequest = detectImageRequest(currentInput);
     const isEssayRequest = detectEssayRequest(currentInput);
 
+    // Prioritize image generation if both keywords are present
     if (isImageRequest && !isEssayRequest) {
       setIsGeneratingImage(true);
       await generateImage(currentInput);
       return;
     }
 
-    if (isEssayRequest) {
+    if (isEssayRequest && !isImageRequest) {
       setIsGeneratingEssay(true);
     } else {
       setIsLoading(true);
