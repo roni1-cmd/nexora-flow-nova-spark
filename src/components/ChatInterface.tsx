@@ -787,7 +787,7 @@ export const ChatInterface = () => {
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <AITextLoading texts={["Thinking...", "Processing...", "Analyzing...", "Computing...", "Almost..."]} />
+                  <AITextLoading texts={["Thinking...", "Processing...", "Analyzing...", "Still thinking...", "Almost there..."]} />
                 </div>
               )}
             </div>
