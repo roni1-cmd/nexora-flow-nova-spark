@@ -45,11 +45,11 @@ interface Conversation {
 }
 
 const MODELS = [
-  { id: 'gemma2-9b-it', name: 'Gemma 2 9B' },
-  { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant' },
-  { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile' },
-  { id: 'mistral-saba-24b', name: 'Mistral Saba 24B' },
-  { id: 'qwen-qwq-32b', name: 'Qwen QwQ 32B (Reasoning)' },
+  { id: 'gemma2-9b-it', name: 'nexora node-X7' },
+  { id: 'llama-3.1-8b-instant', name: 'nexora orion-9' },
+  { id: 'llama-3.3-70b-versatile', name: 'nexora fract-01' },
+  { id: 'mistral-saba-24b', name: 'nexora cryptiq-32R' },
+  { id: 'qwen-qwq-32b', name: 'nexora Cortex-Cerebruc' },
 ];
 
 const API_KEY = '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';
