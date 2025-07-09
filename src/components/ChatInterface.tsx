@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Download, X, ChevronDown, LogOut, User } from 'lucide-react';
+import { Download, X, ChevronDown, LogOut, User, Settings, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -10,6 +11,9 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
 import { UserProfile } from './UserProfile';
 import { EssayCanvas } from './EssayCanvas';
 import { EssayModal } from './EssayModal';
+import { ReasoningView } from './ReasoningView';
+import { MessageActions } from './MessageActions';
+import { ConversationManager } from './ConversationManager';
 import { useUsageTracking } from '@/hooks/useUsageTracking';
 import AIPromptInput from './AIPromptInput';
 import AITextLoading from './AITextLoading';
@@ -21,6 +25,8 @@ interface Message {
   imageUrl?: string;
   isCode?: boolean;
   isEssay?: boolean;
+  reasoning?: string;
+  timestamp?: Date;
 }
 
 interface User {
@@ -29,15 +35,24 @@ interface User {
   photoURL: string;
 }
 
+interface Conversation {
+  id: string;
+  title: string;
+  lastMessage: string;
+  timestamp: Date;
+  messageCount: number;
+  messages: Message[];
+}
+
 const MODELS = [
-  { id: 'accounts/fireworks/models/qwen2p5-72b-instruct', name: 'nexora PetalFlow' },
-  { id: 'accounts/fireworks/models/llama4-maverick-instruct-basic', name: 'nexora Casanova Scout' },
-  { id: 'accounts/fireworks/models/llama-v3p1-8b-instruct', name: 'nexora Lip Instruct' },
-  { id: 'accounts/fireworks/models/deepseek-r1-basic', name: 'nexora Fluxborn Adaptive' },
-  { id: 'accounts/sentientfoundation-serverless/models/dobby-mini-unhinged-plus-llama-3-1-8b', name: 'nexora-X RogueMini 8B' },
+  { id: 'gemma2-9b-it', name: 'Gemma 2 9B' },
+  { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant' },
+  { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile' },
+  { id: 'mistral-saba-24b', name: 'Mistral Saba 24B' },
+  { id: 'qwen-qwq-32b', name: 'Qwen QwQ 32B (Reasoning)' },
 ];
 
-const API_KEY = 'fw_3Zkrqd9Q3bWrDrUUCUdfgBog';
+const API_KEY = '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';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -203,22 +218,58 @@ const AuthScreen = ({ onSignIn }: { onSignIn: () => void }) => {
 export const ChatInterface = () => {
   const [user, setUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [imageProgress, setImageProgress] = useState(0);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
   const [essayModalOpen, setEssayModalOpen] = useState(false);
   const [currentEssayContent, setCurrentEssayContent] = useState('');
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { trackApiCall, trackModelUsage, stats } = useUsageTracking();
 
+  // Load conversations from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('nexora-conversations');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setConversations(parsed.map((conv: any) => ({
+          ...conv,
+          timestamp: new Date(conv.timestamp),
+          messages: conv.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+          }))
+        })));
+      } catch (error) {
+        console.error('Error loading conversations:', error);
+      }
+    }
+  }, []);
+
+  // Save conversations to localStorage
+  useEffect(() => {
+    if (conversations.length > 0) {
+      localStorage.setItem('nexora-conversations', JSON.stringify(conversations));
+    }
+  }, [conversations]);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // Firebase auth listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
@@ -236,27 +287,7 @@ export const ChatInterface = () => {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  useEffect(() => {
-    if (isGeneratingImage) {
-      const interval = setInterval(() => {
-        setImageProgress(prev => {
-          if (prev >= 90) return prev;
-          return prev + Math.random() * 10;
-        });
-      }, 200);
-      return () => clearInterval(interval);
-    } else {
-      setImageProgress(0);
-    }
-  }, [isGeneratingImage]);
-
-  // Add clipboard paste support
+  // Clipboard paste support
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
@@ -281,15 +312,13 @@ export const ChatInterface = () => {
     return () => document.removeEventListener('paste', handlePaste);
   }, []);
 
-  const detectCodeInMessage = (content: string) => {
-    const codePatterns = [
-      /```[\s\S]*?```/g,
-      /`[^`]+`/g,
-      /\b(function|const|let|var|if|else|for|while|class|import|export)\b/g,
-      /\b(def|print|return|import|class|if|else|for|while)\b/g,
-      /<[^>]+>/g
+  const detectEssayRequest = (content: string) => {
+    const essayPatterns = [
+      /\b(essay|write|composition|paper|article|report|analysis)\b/i,
+      /\b(explain|describe|discuss|analyze|compare|contrast)\b.*\b(essay|paper|article)\b/i,
+      /\bwrite\s+(about|on|an?\s+essay)\b/i
     ];
-    return codePatterns.some(pattern => pattern.test(content));
+    return essayPatterns.some(pattern => pattern.test(content));
   };
 
   const extractCodeBlocks = (content: string) => {
@@ -302,64 +331,104 @@ export const ChatInterface = () => {
     return content.replace(/```(?:\w+\n)?[\s\S]*?```/g, '').trim();
   };
 
-  const detectEssayRequest = (content: string) => {
-    const essayPatterns = [
-      /\b(essay|write|composition|paper|article|report|analysis)\b/i,
-      /\b(explain|describe|discuss|analyze|compare|contrast)\b.*\b(essay|paper|article)\b/i,
-      /\bwrite\s+(about|on|an?\s+essay)\b/i
-    ];
-    return essayPatterns.some(pattern => pattern.test(content));
+  const createNewConversation = () => {
+    const newId = Date.now().toString();
+    const newConversation: Conversation = {
+      id: newId,
+      title: 'New Conversation',
+      lastMessage: '',
+      timestamp: new Date(),
+      messageCount: 0,
+      messages: []
+    };
+    
+    setConversations(prev => [newConversation, ...prev]);
+    setCurrentConversationId(newId);
+    setMessages([]);
   };
 
-  const sendMessage = async () => {
-    if (!input.trim() && !uploadedImage) return;
+  const updateConversation = (messages: Message[]) => {
+    if (!currentConversationId) return;
+
+    setConversations(prev => prev.map(conv => {
+      if (conv.id === currentConversationId) {
+        const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+        return {
+          ...conv,
+          title: lastUserMessage?.content.slice(0, 50) + (lastUserMessage?.content.length > 50 ? '...' : '') || 'New Conversation',
+          lastMessage: messages[messages.length - 1]?.content.slice(0, 100) || '',
+          timestamp: new Date(),
+          messageCount: messages.length,
+          messages
+        };
+      }
+      return conv;
+    }));
+  };
+
+  const loadConversation = (conversationId: string) => {
+    const conversation = conversations.find(c => c.id === conversationId);
+    if (conversation) {
+      setCurrentConversationId(conversationId);
+      setMessages(conversation.messages);
+    }
+  };
+
+  const deleteConversation = (conversationId: string) => {
+    setConversations(prev => prev.filter(c => c.id !== conversationId));
+    if (currentConversationId === conversationId) {
+      setCurrentConversationId(null);
+      setMessages([]);
+    }
+  };
+
+  const sendMessage = async (messageContent?: string) => {
+    const contentToSend = messageContent || input;
+    if (!contentToSend.trim() && !uploadedImage) return;
+
+    // Create new conversation if none exists
+    if (!currentConversationId) {
+      createNewConversation();
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input,
+      content: contentToSend,
       imageUrl: uploadedImage || undefined,
+      timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    const currentInput = input;
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setInput('');
     setUploadedImage(null);
 
-    const isImageRequest = /\b(generate|create|make|draw|show|design|produce|image|picture|photo|art|illustration|drawing)\b/i.test(currentInput);
-    const isEssayRequest = detectEssayRequest(currentInput);
-
-    if (isImageRequest) {
-      setIsGeneratingImage(true);
-      await generateImage(currentInput);
-      return;
-    }
+    const isEssayRequest = detectEssayRequest(contentToSend);
+    const isReasoningModel = selectedModel === 'qwen-qwq-32b';
 
     setIsLoading(true);
 
     try {
-      const modelToUse = uploadedImage ? 'accounts/fireworks/models/llama4-maverick-instruct-basic' : selectedModel;
+      trackApiCall(selectedModel);
 
-      // Track API call
-      trackApiCall(modelToUse);
-
-      const response = await fetch('https://api.fireworks.ai/inference/v1/chat/completions', {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: modelToUse,
+          model: selectedModel,
           messages: [
             {
               role: 'user',
               content: uploadedImage 
                 ? [
-                    { type: 'text', text: currentInput },
+                    { type: 'text', text: contentToSend },
                     { type: 'image_url', image_url: { url: uploadedImage } }
                   ]
-                : currentInput
+                : contentToSend
             }
           ],
           max_tokens: isEssayRequest ? 2000 : 1000,
@@ -368,17 +437,25 @@ export const ChatInterface = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response from API');
+        throw new Error(`API responded with status ${response.status}`);
       }
 
       const data = await response.json();
-      const responseContent = data.choices[0].message.content;
+      let responseContent = data.choices[0].message.content;
+      let reasoning = '';
+
+      // Extract reasoning for QwQ model
+      if (isReasoningModel && responseContent.includes('<think>')) {
+        const thinkMatch = responseContent.match(/<think>([\s\S]*?)<\/think>/);
+        if (thinkMatch) {
+          reasoning = thinkMatch[1].trim();
+          responseContent = responseContent.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+        }
+      }
       
-      // Track model usage
-      trackModelUsage(modelToUse);
+      trackModelUsage(selectedModel);
 
       if (isEssayRequest && responseContent.length > 500) {
-        // For essay requests, show in modal
         setCurrentEssayContent(responseContent);
         setEssayModalOpen(true);
         
@@ -387,34 +464,44 @@ export const ChatInterface = () => {
           role: 'assistant',
           content: responseContent,
           isEssay: true,
+          reasoning,
+          timestamp: new Date(),
         };
-        setMessages(prev => [...prev, assistantMessage]);
+        
+        const updatedMessages = [...newMessages, assistantMessage];
+        setMessages(updatedMessages);
+        updateConversation(updatedMessages);
       } else {
-        // For regular requests, handle code blocks
         const codeBlocks = extractCodeBlocks(responseContent);
         const cleanContent = removeCodeBlocksFromContent(responseContent);
         
+        const messagesToAdd: Message[] = [];
+        
         if (cleanContent.trim()) {
-          const assistantMessage: Message = {
+          messagesToAdd.push({
             id: (Date.now() + 1).toString(),
             role: 'assistant',
             content: cleanContent,
-          };
-          setMessages(prev => [...prev, assistantMessage]);
+            reasoning,
+            timestamp: new Date(),
+          });
         }
 
-        // Add code blocks as separate messages if they exist
         if (codeBlocks.length > 0) {
           codeBlocks.forEach((code, index) => {
-            const codeMessage: Message = {
+            messagesToAdd.push({
               id: (Date.now() + 2 + index).toString(),
               role: 'assistant',
               content: code,
               isCode: true,
-            };
-            setMessages(prev => [...prev, codeMessage]);
+              timestamp: new Date(),
+            });
           });
         }
+
+        const updatedMessages = [...newMessages, ...messagesToAdd];
+        setMessages(updatedMessages);
+        updateConversation(updatedMessages);
       }
 
     } catch (error) {
@@ -429,46 +516,42 @@ export const ChatInterface = () => {
     }
   };
 
-  const generateImage = async (prompt: string) => {
-    try {
-      const response = await fetch('https://api.fireworks.ai/inference/v1/workflows/accounts/fireworks/models/flux-1-schnell-fp8/text_to_image', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: prompt,
-        }),
-      });
+  const regenerateResponse = async (messageId: string) => {
+    const messageIndex = messages.findIndex(m => m.id === messageId);
+    if (messageIndex === -1) return;
 
-      if (!response.ok) {
-        throw new Error('Failed to generate image');
-      }
+    // Find the last user message before this assistant message
+    const precedingMessages = messages.slice(0, messageIndex);
+    const lastUserMessage = precedingMessages.filter(m => m.role === 'user').pop();
+    
+    if (!lastUserMessage) return;
 
-      setImageProgress(100);
-      const blob = await response.blob();
-      const imageUrl = URL.createObjectURL(blob);
+    // Remove the assistant message and any following messages
+    const newMessages = messages.slice(0, messageIndex);
+    setMessages(newMessages);
+    
+    // Resend the user message
+    await sendMessage(lastUserMessage.content);
+  };
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Here\'s the generated image:',
-        imageUrl: imageUrl,
-      };
+  const deleteMessage = (messageId: string) => {
+    const newMessages = messages.filter(m => m.id !== messageId);
+    setMessages(newMessages);
+    updateConversation(newMessages);
+  };
 
-      setMessages(prev => [...prev, assistantMessage]);
-
-    } catch (error) {
-      console.error('Error generating image:', error);
-      toast({
-        title: "Error",
-        description: "Failed to generate image. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGeneratingImage(false);
-      setImageProgress(0);
+  const editMessage = (messageId: string, newContent: string) => {
+    if (editingMessageId === messageId) {
+      // Save the edit
+      const newMessages = messages.map(m => 
+        m.id === messageId ? { ...m, content: newContent } : m
+      );
+      setMessages(newMessages);
+      updateConversation(newMessages);
+      setEditingMessageId(null);
+    } else {
+      // Start editing
+      setEditingMessageId(messageId);
     }
   };
 
@@ -480,19 +563,12 @@ export const ChatInterface = () => {
     reader.readAsDataURL(file);
   };
 
-  const downloadImage = (imageUrl: string) => {
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = 'nexora-generated-image.png';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const handleSignOut = async () => {
     try {
       await signOut(auth);
       setMessages([]);
+      setConversations([]);
+      setCurrentConversationId(null);
       setShowProfile(false);
     } catch (error) {
       console.error('Error signing out:', error);
@@ -518,7 +594,6 @@ export const ChatInterface = () => {
   if (showProfile) {
     return (
       <div className="flex flex-col h-screen bg-black text-white">
-        {/* Header for Profile */}
         <div className="flex items-center justify-between px-4 md:px-6 py-4 bg-black border-b border-gray-800">
           <Button
             onClick={() => setShowProfile(false)}
@@ -551,9 +626,16 @@ export const ChatInterface = () => {
             />
             <span className="text-lg md:text-xl font-medium text-white hidden sm:block">nexora</span>
           </div>
+          
+          <ConversationManager
+            conversations={conversations}
+            currentConversationId={currentConversationId}
+            onSelectConversation={loadConversation}
+            onNewConversation={createNewConversation}
+            onDeleteConversation={deleteConversation}
+          />
         </div>
 
-        {/* Right side with Upgrade button and User Profile Dropdown */}
         <div className="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
           <Button
             onClick={handleUpgradeClick}
@@ -561,6 +643,7 @@ export const ChatInterface = () => {
             size="sm"
             className="border-purple-500 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 text-xs md:text-sm px-2 md:px-4"
           >
+            <Zap className="w-3 h-3 mr-1" />
             Upgrade
           </Button>
 
@@ -623,7 +706,7 @@ export const ChatInterface = () => {
           <div className="flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide" ref={scrollAreaRef}>
             <div className="max-w-3xl mx-auto py-4 space-y-4 md:space-y-6">
               {messages.map((message) => (
-                <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div key={message.id} className={`group flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {message.role === 'user' ? (
                     <div className="max-w-[85%] md:max-w-xs lg:max-w-md bg-gray-800 text-white rounded-2xl px-3 md:px-4 py-2">
                       {message.imageUrl && (
@@ -634,9 +717,22 @@ export const ChatInterface = () => {
                         />
                       )}
                       <p className="text-sm">{message.content}</p>
+                      <MessageActions
+                        content={message.content}
+                        messageId={message.id}
+                        onEdit={editMessage}
+                        onDelete={() => deleteMessage(message.id)}
+                        isEditing={editingMessageId === message.id}
+                        onCancelEdit={() => setEditingMessageId(null)}
+                      />
                     </div>
                   ) : (
                     <div className="max-w-[95%] md:max-w-2xl">
+                      <ReasoningView 
+                        reasoning={message.reasoning || ''} 
+                        isVisible={selectedModel === 'qwen-qwq-32b' && !!message.reasoning}
+                      />
+                      
                       {message.isCode ? (
                         <CodeCanvas code={message.content} />
                       ) : message.isEssay ? (
@@ -671,19 +767,20 @@ export const ChatInterface = () => {
                                 className="max-w-full md:max-w-sm rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
                                 onClick={() => setFullScreenImage(message.imageUrl!)}
                               />
-                              <Button
-                                onClick={() => downloadImage(message.imageUrl!)}
-                                variant="outline"
-                                size="sm"
-                                className="mt-2 bg-gray-800 border-gray-600 hover:bg-gray-700 text-white"
-                              >
-                                <Download className="w-4 h-4 mr-2" />
-                                Download
-                              </Button>
                             </div>
                           )}
                         </>
                       )}
+                      
+                      <MessageActions
+                        content={message.content}
+                        messageId={message.id}
+                        onRegenerate={() => regenerateResponse(message.id)}
+                        onDelete={() => deleteMessage(message.id)}
+                        onEdit={editMessage}
+                        isEditing={editingMessageId === message.id}
+                        onCancelEdit={() => setEditingMessageId(null)}
+                      />
                     </div>
                   )}
                 </div>
@@ -693,16 +790,7 @@ export const ChatInterface = () => {
                   <AITextLoading texts={["Thinking...", "Processing...", "Analyzing...", "Computing...", "Almost..."]} />
                 </div>
               )}
-              {isGeneratingImage && (
-                <div className="flex justify-start">
-                  <div className="max-w-2xl">
-                    <div className="text-white text-sm mb-2">Generating image...</div>
-                    <Progress value={imageProgress} className="w-48 md:w-64 h-2" />
-                  </div>
-                </div>
-              )}
             </div>
-            {/* Fade gradient overlay */}
             <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none"></div>
           </div>
         )}
@@ -714,19 +802,18 @@ export const ChatInterface = () => {
           <AIPromptInput
             value={input}
             onChange={setInput}
-            onSendMessage={sendMessage}
+            onSendMessage={() => sendMessage()}
             onImageUpload={handleImageUpload}
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
             models={MODELS}
-            disabled={isLoading || isGeneratingImage}
+            disabled={isLoading}
             uploadedImage={uploadedImage}
             onRemoveImage={() => setUploadedImage(null)}
           />
         </div>
       </div>
 
-      {/* Essay Modal */}
       <EssayModal
         isOpen={essayModalOpen}
         onClose={() => setEssayModalOpen(false)}
@@ -735,7 +822,6 @@ export const ChatInterface = () => {
         title="Essay Editor"
       />
 
-      {/* Full Screen Image Modal */}
       {fullScreenImage && (
         <ImageModal 
           imageUrl={fullScreenImage} 
