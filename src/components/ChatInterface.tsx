@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Download, X, ChevronDown, LogOut, User, History, Edit2, Trash2, Copy, RefreshCw } from 'lucide-react';
+import { Download, X, ChevronDown, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -13,7 +13,6 @@ import { EssayModal } from './EssayModal';
 import { useUsageTracking } from '@/hooks/useUsageTracking';
 import AIPromptInput from './AIPromptInput';
 import AITextLoading from './AITextLoading';
-import { ConversationHistory } from './ConversationHistory';
 
 interface Message {
   id: string;
@@ -22,15 +21,6 @@ interface Message {
   imageUrl?: string;
   isCode?: boolean;
   isEssay?: boolean;
-  timestamp: number;
-}
-
-interface Conversation {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: number;
-  updatedAt: number;
 }
 
 interface User {
@@ -41,13 +31,13 @@ interface User {
 
 const MODELS = [
   { id: 'accounts/fireworks/models/qwen2p5-72b-instruct', name: 'nexora PetalFlow' },
-  { id: 'accounts/fireworks/models/llama-v3p1-405b-instruct', name: 'nexora Casanova Scout' },
+  { id: 'accounts/fireworks/models/llama4-maverick-instruct-basic', name: 'nexora Casanova Scout' },
   { id: 'accounts/fireworks/models/llama-v3p1-8b-instruct', name: 'nexora Lip Instruct' },
-  { id: 'accounts/fireworks/models/deepseek-r1-distill-llama-70b', name: 'nexora Fluxborn Adaptive' },
-  { id: 'accounts/fireworks/models/llama-v3p1-70b-instruct', name: 'nexora-X RogueMini 70B' },
+  { id: 'accounts/fireworks/models/deepseek-r1-basic', name: 'nexora Fluxborn Adaptive' },
+  { id: 'accounts/sentientfoundation-serverless/models/dobby-mini-unhinged-plus-llama-3-1-8b', name: 'nexora-X RogueMini 8B' },
 ];
 
-const API_KEY = 'fw_3ZUWaRkBUhe4FtNLvqSiVVE8';
+const API_KEY = 'fw_3Zkrqd9Q3bWrDrUUCUdfgBog';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -86,80 +76,25 @@ const TypewriterText = ({ text }: { text: string }) => {
     }
   }, [currentIndex, text]);
 
-  // Format the text to handle markdown-like formatting
-  const formatText = (text: string) => {
-    // Convert ## to bold text with proper spacing
-    return text.replace(/##\s*(.*?)(?=\n|$)/g, '<strong>$1</strong>');
-  };
-
-  return <span dangerouslySetInnerHTML={{ __html: formatText(displayedText) }} />;
+  return <span>{displayedText}</span>;
 };
 
 const CodeCanvas = ({ code }: { code: string }) => (
   <div className="bg-gray-900 rounded-lg p-4 my-3 border border-gray-700">
     <div className="flex items-center justify-between mb-3">
       <div className="text-xs text-gray-400 font-medium">Code</div>
-      <div className="flex gap-2">
-        <Button
-          onClick={() => navigator.clipboard.writeText(code)}
-          variant="ghost"
-          size="sm"
-          className="text-gray-400 hover:text-white h-7 px-2"
-        >
-          <Copy className="w-3 h-3 mr-1" />
-          Copy
-        </Button>
-      </div>
+      <Button
+        onClick={() => navigator.clipboard.writeText(code)}
+        variant="ghost"
+        size="sm"
+        className="text-gray-400 hover:text-white h-7 px-2"
+      >
+        Copy
+      </Button>
     </div>
     <pre className="text-sm text-gray-100 overflow-x-auto whitespace-pre-wrap">
       <code>{code}</code>
     </pre>
-  </div>
-);
-
-const MessageActions = ({ message, onEdit, onDelete, onRegenerate }: { 
-  message: Message; 
-  onEdit: () => void; 
-  onDelete: () => void; 
-  onRegenerate: () => void; 
-}) => (
-  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-    <Button
-      onClick={() => navigator.clipboard.writeText(message.content)}
-      variant="ghost"
-      size="sm"
-      className="h-6 w-6 p-0 text-gray-400 hover:text-white"
-    >
-      <Copy className="w-3 h-3" />
-    </Button>
-    {message.role === 'user' && (
-      <Button
-        onClick={onEdit}
-        variant="ghost"
-        size="sm"
-        className="h-6 w-6 p-0 text-gray-400 hover:text-white"
-      >
-        <Edit2 className="w-3 h-3" />
-      </Button>
-    )}
-    {message.role === 'assistant' && (
-      <Button
-        onClick={onRegenerate}
-        variant="ghost"
-        size="sm"
-        className="h-6 w-6 p-0 text-gray-400 hover:text-white"
-      >
-        <RefreshCw className="w-3 h-3" />
-      </Button>
-    )}
-    <Button
-      onClick={onDelete}
-      variant="ghost"
-      size="sm"
-      className="h-6 w-6 p-0 text-gray-400 hover:text-red-400"
-    >
-      <Trash2 className="w-3 h-3" />
-    </Button>
   </div>
 );
 
@@ -267,25 +202,18 @@ const AuthScreen = ({ onSignIn }: { onSignIn: () => void }) => {
 
 export const ChatInterface = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [isGeneratingEssay, setIsGeneratingEssay] = useState(false);
   const [imageProgress, setImageProgress] = useState(0);
-  const [essayProgress, setEssayProgress] = useState(0);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [essayModalOpen, setEssayModalOpen] = useState(false);
   const [currentEssayContent, setCurrentEssayContent] = useState('');
-  const [guestPromptCount, setGuestPromptCount] = useState(0);
-  const [editingMessage, setEditingMessage] = useState<string | null>(null);
-  const [editingContent, setEditingContent] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -299,7 +227,6 @@ export const ChatInterface = () => {
           email: firebaseUser.email || '',
           photoURL: firebaseUser.photoURL || ''
         });
-        loadConversations();
       } else {
         setUser(null);
       }
@@ -313,7 +240,7 @@ export const ChatInterface = () => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-  }, [currentConversation?.messages]);
+  }, [messages]);
 
   useEffect(() => {
     if (isGeneratingImage) {
@@ -329,20 +256,7 @@ export const ChatInterface = () => {
     }
   }, [isGeneratingImage]);
 
-  useEffect(() => {
-    if (isGeneratingEssay) {
-      const interval = setInterval(() => {
-        setEssayProgress(prev => {
-          if (prev >= 90) return prev;
-          return prev + Math.random() * 8;
-        });
-      }, 300);
-      return () => clearInterval(interval);
-    } else {
-      setEssayProgress(0);
-    }
-  }, [isGeneratingEssay]);
-
+  // Add clipboard paste support
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
@@ -367,74 +281,6 @@ export const ChatInterface = () => {
     return () => document.removeEventListener('paste', handlePaste);
   }, []);
 
-  const loadConversations = () => {
-    if (user) {
-      const saved = localStorage.getItem(`conversations_${user.email}`);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setConversations(parsed);
-        if (parsed.length > 0) {
-          setCurrentConversation(parsed[0]);
-        }
-      }
-    }
-  };
-
-  const saveConversations = (convs: Conversation[]) => {
-    if (user) {
-      localStorage.setItem(`conversations_${user.email}`, JSON.stringify(convs));
-    }
-  };
-
-  const createNewConversation = () => {
-    const newConv: Conversation = {
-      id: Date.now().toString(),
-      title: 'New Conversation',
-      messages: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
-    
-    const updated = [newConv, ...conversations];
-    setConversations(updated);
-    setCurrentConversation(newConv);
-    saveConversations(updated);
-  };
-
-  const updateCurrentConversation = (messages: Message[]) => {
-    if (!currentConversation) return;
-
-    const title = messages.length > 0 ? 
-      messages[0].content.substring(0, 50) + (messages[0].content.length > 50 ? '...' : '') : 
-      'New Conversation';
-
-    const updated = {
-      ...currentConversation,
-      messages,
-      title,
-      updatedAt: Date.now()
-    };
-
-    setCurrentConversation(updated);
-    
-    const updatedConversations = conversations.map(conv => 
-      conv.id === currentConversation.id ? updated : conv
-    );
-    
-    setConversations(updatedConversations);
-    saveConversations(updatedConversations);
-  };
-
-  const deleteConversation = (id: string) => {
-    const updated = conversations.filter(conv => conv.id !== id);
-    setConversations(updated);
-    saveConversations(updated);
-    
-    if (currentConversation?.id === id) {
-      setCurrentConversation(updated.length > 0 ? updated[0] : null);
-    }
-  };
-
   const detectCodeInMessage = (content: string) => {
     const codePatterns = [
       /```[\s\S]*?```/g,
@@ -456,103 +302,45 @@ export const ChatInterface = () => {
     return content.replace(/```(?:\w+\n)?[\s\S]*?```/g, '').trim();
   };
 
-  const detectImageRequest = (content: string) => {
-    const imagePatterns = [
-      /\bimage\b/i,
-      /\bpicture\b/i,
-      /\bphoto\b/i,
-      /\bgenerate.*image\b/i,
-      /\bcreate.*image\b/i,
-      /\bmake.*image\b/i,
-      /\bdraw\b/i,
-      /\billustration\b/i,
-      /\bsketch\b/i,
-      /\bvisual\b/i
-    ];
-    return imagePatterns.some(pattern => pattern.test(content));
-  };
-
   const detectEssayRequest = (content: string) => {
     const essayPatterns = [
-      /\bessay\b/i,
-      /\bwrite.*essay\b/i,
-      /\bcomposition\b/i,
-      /\bpaper\b/i,
-      /\barticle\b/i,
-      /\breport\b/i,
-      /\banalysis\b/i,
-      /\bwrite.*about\b/i,
-      /\bthesis\b/i,
-      /\bdissertation\b/i
+      /\b(essay|write|composition|paper|article|report|analysis)\b/i,
+      /\b(explain|describe|discuss|analyze|compare|contrast)\b.*\b(essay|paper|article)\b/i,
+      /\bwrite\s+(about|on|an?\s+essay)\b/i
     ];
     return essayPatterns.some(pattern => pattern.test(content));
   };
 
-  const sendMessage = async (messageContent?: string) => {
-    const content = messageContent || input;
-    if (!content.trim() && !uploadedImage) return;
-
-    // Create new conversation if none exists
-    if (!currentConversation) {
-      createNewConversation();
-    }
-
-    // Check guest usage limit
-    if (!user) {
-      if (guestPromptCount >= 5) {
-        toast({
-          title: "Usage Limit Reached",
-          description: "Please sign in to continue using nexora.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      if (guestPromptCount === 4) {
-        toast({
-          title: "Last Free Prompt",
-          description: "This is your last free prompt. Sign in to continue using nexora.",
-          variant: "destructive",
-        });
-      }
-      
-      setGuestPromptCount(prev => prev + 1);
-    }
+  const sendMessage = async () => {
+    if (!input.trim() && !uploadedImage) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content,
+      content: input,
       imageUrl: uploadedImage || undefined,
-      timestamp: Date.now(),
     };
 
-    const currentMessages = currentConversation?.messages || [];
-    const newMessages = [...currentMessages, userMessage];
-    updateCurrentConversation(newMessages);
-
+    setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
     setUploadedImage(null);
 
-    const isImageRequest = detectImageRequest(content);
-    const isEssayRequest = detectEssayRequest(content);
+    const isImageRequest = /\b(generate|create|make|draw|show|design|produce|image|picture|photo|art|illustration|drawing)\b/i.test(currentInput);
+    const isEssayRequest = detectEssayRequest(currentInput);
 
-    // Prioritize image generation if both keywords are present
-    if (isImageRequest && !isEssayRequest) {
+    if (isImageRequest) {
       setIsGeneratingImage(true);
-      await generateImage(content);
+      await generateImage(currentInput);
       return;
     }
 
-    if (isEssayRequest && !isImageRequest) {
-      setIsGeneratingEssay(true);
-    } else {
-      setIsLoading(true);
-    }
+    setIsLoading(true);
 
     try {
-      const modelToUse = uploadedImage ? 'accounts/fireworks/models/llama-v3p1-405b-instruct' : selectedModel;
+      const modelToUse = uploadedImage ? 'accounts/fireworks/models/llama4-maverick-instruct-basic' : selectedModel;
 
+      // Track API call
       trackApiCall(modelToUse);
 
       const response = await fetch('https://api.fireworks.ai/inference/v1/chat/completions', {
@@ -568,10 +356,10 @@ export const ChatInterface = () => {
               role: 'user',
               content: uploadedImage 
                 ? [
-                    { type: 'text', text: content },
+                    { type: 'text', text: currentInput },
                     { type: 'image_url', image_url: { url: uploadedImage } }
                   ]
-                : content
+                : currentInput
             }
           ],
           max_tokens: isEssayRequest ? 2000 : 1000,
@@ -580,16 +368,17 @@ export const ChatInterface = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+        throw new Error('Failed to get response from API');
       }
 
       const data = await response.json();
       const responseContent = data.choices[0].message.content;
       
+      // Track model usage
       trackModelUsage(modelToUse);
 
       if (isEssayRequest && responseContent.length > 500) {
-        setEssayProgress(100);
+        // For essay requests, show in modal
         setCurrentEssayContent(responseContent);
         setEssayModalOpen(true);
         
@@ -598,27 +387,23 @@ export const ChatInterface = () => {
           role: 'assistant',
           content: responseContent,
           isEssay: true,
-          timestamp: Date.now(),
         };
-        
-        const updatedMessages = [...newMessages, assistantMessage];
-        updateCurrentConversation(updatedMessages);
+        setMessages(prev => [...prev, assistantMessage]);
       } else {
+        // For regular requests, handle code blocks
         const codeBlocks = extractCodeBlocks(responseContent);
         const cleanContent = removeCodeBlocksFromContent(responseContent);
-        
-        let messagesToAdd: Message[] = [];
         
         if (cleanContent.trim()) {
           const assistantMessage: Message = {
             id: (Date.now() + 1).toString(),
             role: 'assistant',
             content: cleanContent,
-            timestamp: Date.now(),
           };
-          messagesToAdd.push(assistantMessage);
+          setMessages(prev => [...prev, assistantMessage]);
         }
 
+        // Add code blocks as separate messages if they exist
         if (codeBlocks.length > 0) {
           codeBlocks.forEach((code, index) => {
             const codeMessage: Message = {
@@ -626,14 +411,10 @@ export const ChatInterface = () => {
               role: 'assistant',
               content: code,
               isCode: true,
-              timestamp: Date.now(),
             };
-            messagesToAdd.push(codeMessage);
+            setMessages(prev => [...prev, codeMessage]);
           });
         }
-        
-        const updatedMessages = [...newMessages, ...messagesToAdd];
-        updateCurrentConversation(updatedMessages);
       }
 
     } catch (error) {
@@ -645,8 +426,6 @@ export const ChatInterface = () => {
       });
     } finally {
       setIsLoading(false);
-      setIsGeneratingEssay(false);
-      setEssayProgress(0);
     }
   };
 
@@ -676,12 +455,9 @@ export const ChatInterface = () => {
         role: 'assistant',
         content: 'Here\'s the generated image:',
         imageUrl: imageUrl,
-        timestamp: Date.now(),
       };
 
-      const currentMessages = currentConversation?.messages || [];
-      const updatedMessages = [...currentMessages, assistantMessage];
-      updateCurrentConversation(updatedMessages);
+      setMessages(prev => [...prev, assistantMessage]);
 
     } catch (error) {
       console.error('Error generating image:', error);
@@ -716,8 +492,7 @@ export const ChatInterface = () => {
   const handleSignOut = async () => {
     try {
       await signOut(auth);
-      setConversations([]);
-      setCurrentConversation(null);
+      setMessages([]);
       setShowProfile(false);
     } catch (error) {
       console.error('Error signing out:', error);
@@ -726,56 +501,6 @@ export const ChatInterface = () => {
 
   const handleUpgradeClick = () => {
     window.open('https://coreastarstroupe.netlify.app/pricing', '_blank');
-  };
-
-  const handleEditMessage = (message: Message) => {
-    setEditingMessage(message.id);
-    setEditingContent(message.content);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingMessage || !currentConversation) return;
-
-    const messageIndex = currentConversation.messages.findIndex(m => m.id === editingMessage);
-    if (messageIndex === -1) return;
-
-    // Remove messages after the edited one and regenerate
-    const updatedMessages = currentConversation.messages.slice(0, messageIndex);
-    updatedMessages[messageIndex] = {
-      ...updatedMessages[messageIndex],
-      content: editingContent
-    };
-
-    updateCurrentConversation(updatedMessages);
-    setEditingMessage(null);
-    setEditingContent('');
-
-    // Regenerate response
-    await sendMessage(editingContent);
-  };
-
-  const handleDeleteMessage = (messageId: string) => {
-    if (!currentConversation) return;
-
-    const updatedMessages = currentConversation.messages.filter(m => m.id !== messageId);
-    updateCurrentConversation(updatedMessages);
-  };
-
-  const handleRegenerateResponse = async (messageId: string) => {
-    if (!currentConversation) return;
-
-    const messageIndex = currentConversation.messages.findIndex(m => m.id === messageId);
-    if (messageIndex === -1) return;
-
-    // Find the user message that triggered this response
-    const userMessage = currentConversation.messages[messageIndex - 1];
-    if (!userMessage || userMessage.role !== 'user') return;
-
-    // Remove the assistant message and regenerate
-    const updatedMessages = currentConversation.messages.slice(0, messageIndex);
-    updateCurrentConversation(updatedMessages);
-
-    await sendMessage(userMessage.content);
   };
 
   if (authLoading) {
@@ -813,42 +538,6 @@ export const ChatInterface = () => {
     );
   }
 
-  if (showHistory) {
-    return (
-      <div className="flex flex-col h-screen bg-black text-white">
-        {/* Header for History */}
-        <div className="flex items-center justify-between px-4 md:px-6 py-4 bg-black border-b border-gray-800">
-          <Button
-            onClick={() => setShowHistory(false)}
-            variant="ghost"
-            className="text-white hover:bg-gray-800"
-          >
-            ← Back to Chat
-          </Button>
-          <span className="text-lg md:text-xl font-medium">Conversation History</span>
-          <Button
-            onClick={createNewConversation}
-            variant="outline"
-            size="sm"
-            className="border-purple-500 text-purple-400 hover:bg-purple-500/10"
-          >
-            New Chat
-          </Button>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto">
-          <ConversationHistory 
-            conversations={conversations}
-            currentConversation={currentConversation}
-            onSelectConversation={setCurrentConversation}
-            onDeleteConversation={deleteConversation}
-            onBack={() => setShowHistory(false)}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-screen bg-black text-white font-google-sans">
       {/* Header */}
@@ -862,34 +551,10 @@ export const ChatInterface = () => {
             />
             <span className="text-lg md:text-xl font-medium text-white hidden sm:block">nexora</span>
           </div>
-          {!user && (
-            <div className="text-xs text-gray-400 hidden md:block">
-              {guestPromptCount}/5 free prompts used
-            </div>
-          )}
         </div>
 
-        {/* Right side with buttons and User Profile Dropdown */}
+        {/* Right side with Upgrade button and User Profile Dropdown */}
         <div className="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
-          <Button
-            onClick={() => setShowHistory(true)}
-            variant="ghost"
-            size="sm"
-            className="text-gray-400 hover:text-white hover:bg-gray-800"
-          >
-            <History className="w-4 h-4 mr-1" />
-            <span className="hidden md:inline">History</span>
-          </Button>
-
-          <Button
-            onClick={createNewConversation}
-            variant="ghost"
-            size="sm"
-            className="text-gray-400 hover:text-white hover:bg-gray-800"
-          >
-            New Chat
-          </Button>
-
           <Button
             onClick={handleUpgradeClick}
             variant="outline"
@@ -899,84 +564,68 @@ export const ChatInterface = () => {
             Upgrade
           </Button>
 
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center space-x-1 md:space-x-2 hover:bg-gray-800 p-1 md:p-2">
-                  <Avatar className="w-6 h-6 md:w-8 md:h-8">
-                    <AvatarImage src={user.photoURL} alt={user.displayName} />
-                    <AvatarFallback className="bg-purple-600 text-white text-xs md:text-sm">
-                      {user.displayName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-white text-sm md:text-base hidden md:block">{user.displayName}</span>
-                  <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white z-50" align="end">
-                <DropdownMenuItem className="flex items-center space-x-2 hover:bg-gray-800">
-                  <Avatar className="w-6 h-6">
-                    <AvatarImage src={user.photoURL} alt={user.displayName} />
-                    <AvatarFallback className="bg-purple-600 text-white text-xs">
-                      {user.displayName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{user.displayName}</span>
-                    <span className="text-xs text-gray-400">{user.email}</span>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => setShowProfile(true)}
-                  className="flex items-center space-x-2 hover:bg-gray-800"
-                >
-                  <User className="w-4 h-4" />
-                  <span>View Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={handleSignOut}
-                  className="flex items-center space-x-2 hover:bg-gray-800 text-red-400"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button
-              onClick={() => {}}
-              variant="outline"
-              size="sm"
-              className="border-blue-500 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 text-xs md:text-sm px-2 md:px-4"
-            >
-              Sign In
-            </Button>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center space-x-1 md:space-x-2 hover:bg-gray-800 p-1 md:p-2">
+                <Avatar className="w-6 h-6 md:w-8 md:h-8">
+                  <AvatarImage src={user.photoURL} alt={user.displayName} />
+                  <AvatarFallback className="bg-purple-600 text-white text-xs md:text-sm">
+                    {user.displayName.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-white text-sm md:text-base hidden md:block">{user.displayName}</span>
+                <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white z-50" align="end">
+              <DropdownMenuItem className="flex items-center space-x-2 hover:bg-gray-800">
+                <Avatar className="w-6 h-6">
+                  <AvatarImage src={user.photoURL} alt={user.displayName} />
+                  <AvatarFallback className="bg-purple-600 text-white text-xs">
+                    {user.displayName.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <span className="font-medium">{user.displayName}</span>
+                  <span className="text-xs text-gray-400">{user.email}</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setShowProfile(true)}
+                className="flex items-center space-x-2 hover:bg-gray-800"
+              >
+                <User className="w-4 h-4" />
+                <span>View Profile</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={handleSignOut}
+                className="flex items-center space-x-2 hover:bg-gray-800 text-red-400"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sign out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       {/* Messages or Initial State */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
-        {!currentConversation || currentConversation.messages.length === 0 ? (
+        {messages.length === 0 ? (
           <div className="flex-1 flex items-center justify-center px-4">
             <div className="text-center">
               <h1 className="text-2xl md:text-4xl font-light text-white mb-6 md:mb-8">
-                What do you want to know{user ? `, ${user.displayName}` : ''}?
+                What do you want to know, <span className="text-purple-400">{user.displayName}</span>?
               </h1>
-              {!user && (
-                <p className="text-sm text-gray-400">
-                  {5 - guestPromptCount} free prompts remaining
-                </p>
-              )}
             </div>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide" ref={scrollAreaRef}>
             <div className="max-w-3xl mx-auto py-4 space-y-4 md:space-y-6">
-              {currentConversation.messages.map((message) => (
-                <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} group`}>
+              {messages.map((message) => (
+                <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {message.role === 'user' ? (
-                    <div className="max-w-[85%] md:max-w-xs lg:max-w-md bg-gray-800 text-white rounded-2xl px-3 md:px-4 py-2 relative">
+                    <div className="max-w-[85%] md:max-w-xs lg:max-w-md bg-gray-800 text-white rounded-2xl px-3 md:px-4 py-2">
                       {message.imageUrl && (
                         <img 
                           src={message.imageUrl} 
@@ -984,46 +633,10 @@ export const ChatInterface = () => {
                           className="max-w-full rounded-lg mb-2"
                         />
                       )}
-                      {editingMessage === message.id ? (
-                        <div className="space-y-2">
-                          <textarea
-                            value={editingContent}
-                            onChange={(e) => setEditingContent(e.target.value)}
-                            className="w-full bg-gray-700 text-white rounded p-2 text-sm resize-none"
-                            rows={3}
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={handleSaveEdit}
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700 h-6 text-xs"
-                            >
-                              Save
-                            </Button>
-                            <Button
-                              onClick={() => setEditingMessage(null)}
-                              size="sm"
-                              variant="outline"
-                              className="h-6 text-xs"
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-sm">{message.content}</p>
-                      )}
-                      <div className="absolute -left-20 top-2">
-                        <MessageActions
-                          message={message}
-                          onEdit={() => handleEditMessage(message)}
-                          onDelete={() => handleDeleteMessage(message.id)}
-                          onRegenerate={() => handleRegenerateResponse(message.id)}
-                        />
-                      </div>
+                      <p className="text-sm">{message.content}</p>
                     </div>
                   ) : (
-                    <div className="max-w-[95%] md:max-w-2xl relative">
+                    <div className="max-w-[95%] md:max-w-2xl">
                       {message.isCode ? (
                         <CodeCanvas code={message.content} />
                       ) : message.isEssay ? (
@@ -1071,14 +684,6 @@ export const ChatInterface = () => {
                           )}
                         </>
                       )}
-                      <div className="absolute -right-20 top-2">
-                        <MessageActions
-                          message={message}
-                          onEdit={() => {}}
-                          onDelete={() => handleDeleteMessage(message.id)}
-                          onRegenerate={() => handleRegenerateResponse(message.id)}
-                        />
-                      </div>
                     </div>
                   )}
                 </div>
@@ -1096,15 +701,8 @@ export const ChatInterface = () => {
                   </div>
                 </div>
               )}
-              {isGeneratingEssay && (
-                <div className="flex justify-start">
-                  <div className="max-w-2xl">
-                    <div className="text-white text-sm mb-2">We are preparing canvas for you, please wait...</div>
-                    <Progress value={essayProgress} className="w-48 md:w-64 h-2" />
-                  </div>
-                </div>
-              )}
             </div>
+            {/* Fade gradient overlay */}
             <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none"></div>
           </div>
         )}
@@ -1116,12 +714,12 @@ export const ChatInterface = () => {
           <AIPromptInput
             value={input}
             onChange={setInput}
-            onSendMessage={() => sendMessage()}
+            onSendMessage={sendMessage}
             onImageUpload={handleImageUpload}
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
             models={MODELS}
-            disabled={isLoading || isGeneratingImage || isGeneratingEssay || (!user && guestPromptCount >= 5)}
+            disabled={isLoading || isGeneratingImage}
             uploadedImage={uploadedImage}
             onRemoveImage={() => setUploadedImage(null)}
           />

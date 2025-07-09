@@ -55,11 +55,19 @@ const notificationVariants = {
 
 const lineVariants = {
     initial: { scaleX: 0, x: "-50%" },
-    animate: { scaleX: 1, x: "0%" },
-    exit: { scaleX: 0, x: "50%" },
+    animate: {
+        scaleX: 1,
+        x: "0%",
+        transition: { duration: 0.2, ease: "easeOut" },
+    },
+    exit: {
+        scaleX: 0,
+        x: "50%",
+        transition: { duration: 0.2, ease: "easeIn" },
+    },
 };
 
-const transition = { type: "spring" as const, bounce: 0, duration: 0.4 };
+const transition = { type: "spring", bounce: 0, duration: 0.4 };
 
 export function EssayToolbar({
     className,
@@ -127,7 +135,6 @@ export function EssayToolbar({
                                 initial="initial"
                                 animate="animate"
                                 exit="exit"
-                                transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
                                 className="absolute -bottom-1 left-1/2 w-full h-[2px] bg-primary origin-left"
                             />
                         </motion.div>
