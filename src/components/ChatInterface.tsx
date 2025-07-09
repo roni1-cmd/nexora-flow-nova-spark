@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +7,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast"
-import { useUser } from '@clerk/clerk-react';
-import { useChat } from 'ai/react';
 
 import { AuthModal } from './AuthModal';
 
@@ -26,7 +25,7 @@ const ChatInterface = () => {
   const bottomRef = useRef<HTMLDivElement>(null);
   const copyTimeout = useRef<NodeJS.Timeout>();
   const [isCopied, setIsCopied] = useState(false);
-  const { isSignedIn, user } = useUser();
+  const [user, setUser] = useState<any>(null); // Replace with actual user state
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [promptCount, setPromptCount] = useState(0);
   const MAX_PROMPTS_WITHOUT_AUTH = 5;
