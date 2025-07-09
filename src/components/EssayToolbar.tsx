@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { AnimatePresence, motion, Variants, Transition } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
     FileDown,
@@ -28,7 +28,7 @@ interface EssayToolbarProps {
     onEditModeToggle?: () => void;
 }
 
-const buttonVariants: Variants = {
+const buttonVariants = {
     initial: {
         gap: 0,
         paddingLeft: ".5rem",
@@ -41,33 +41,33 @@ const buttonVariants: Variants = {
     }),
 };
 
-const spanVariants: Variants = {
+const spanVariants = {
     initial: { width: 0, opacity: 0 },
     animate: { width: "auto", opacity: 1 },
     exit: { width: 0, opacity: 0 },
 };
 
-const notificationVariants: Variants = {
+const notificationVariants = {
     initial: { opacity: 0, y: 10 },
     animate: { opacity: 1, y: -10 },
     exit: { opacity: 0, y: -20 },
 };
 
-const lineVariants: Variants = {
+const lineVariants = {
     initial: { scaleX: 0, x: "-50%" },
     animate: {
         scaleX: 1,
         x: "0%",
-        transition: { duration: 0.2, ease: [0.4, 0, 0.2, 1] },
+        transition: { duration: 0.2, ease: "easeOut" },
     },
     exit: {
         scaleX: 0,
         x: "50%",
-        transition: { duration: 0.2, ease: [0.4, 0, 0.2, 1] },
+        transition: { duration: 0.2, ease: "easeIn" },
     },
 };
 
-const transition: Transition = { type: "spring" as const, bounce: 0, duration: 0.4 };
+const transition = { type: "spring", bounce: 0, duration: 0.4 };
 
 export function EssayToolbar({
     className,
