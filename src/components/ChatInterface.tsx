@@ -37,7 +37,7 @@ const MODELS = [
   { id: 'accounts/sentientfoundation-serverless/models/dobby-mini-unhinged-plus-llama-3-1-8b', name: 'nexora-X RogueMini 8B' },
 ];
 
-const API_KEY = 'fw_3Zkrqd9Q3bWrDrUUCUdfgBog';
+const API_KEY = 'fw_3ZUWaRkBUhe4FtNLvqSiVVE8';
 
 // Firebase configuration
 const firebaseConfig = {
