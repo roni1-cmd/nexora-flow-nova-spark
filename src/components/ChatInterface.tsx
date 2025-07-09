@@ -76,7 +76,13 @@ const TypewriterText = ({ text }: { text: string }) => {
     }
   }, [currentIndex, text]);
 
-  return <span>{displayedText}</span>;
+  // Format the text to handle markdown-like formatting
+  const formatText = (text: string) => {
+    // Convert ## to bold text
+    return text.replace(/##\s*(.*?)(?=\n|$)/g, '<strong>$1</strong>');
+  };
+
+  return <span dangerouslySetInnerHTML={{ __html: formatText(displayedText) }} />;
 };
 
 const CodeCanvas = ({ code }: { code: string }) => (
@@ -207,13 +213,16 @@ export const ChatInterface = () => {
   const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isGeneratingEssay, setIsGeneratingEssay] = useState(false);
   const [imageProgress, setImageProgress] = useState(0);
+  const [essayProgress, setEssayProgress] = useState(0);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
   const [essayModalOpen, setEssayModalOpen] = useState(false);
   const [currentEssayContent, setCurrentEssayContent] = useState('');
+  const [guestPromptCount, setGuestPromptCount] = useState(0);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -256,7 +265,20 @@ export const ChatInterface = () => {
     }
   }, [isGeneratingImage]);
 
-  // Add clipboard paste support
+  useEffect(() => {
+    if (isGeneratingEssay) {
+      const interval = setInterval(() => {
+        setEssayProgress(prev => {
+          if (prev >= 90) return prev;
+          return prev + Math.random() * 8;
+        });
+      }, 300);
+      return () => clearInterval(interval);
+    } else {
+      setEssayProgress(0);
+    }
+  }, [isGeneratingEssay]);
+
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
@@ -304,15 +326,55 @@ export const ChatInterface = () => {
 
   const detectEssayRequest = (content: string) => {
     const essayPatterns = [
-      /\b(essay|write|composition|paper|article|report|analysis)\b/i,
-      /\b(explain|describe|discuss|analyze|compare|contrast)\b.*\b(essay|paper|article)\b/i,
-      /\bwrite\s+(about|on|an?\s+essay)\b/i
+      /\bessay\b/i,
+      /\bwrite.*essay\b/i,
+      /\bcomposition\b/i,
+      /\bpaper\b/i,
+      /\barticle\b/i,
+      /\breport\b/i,
+      /\banalysis\b/i
     ];
     return essayPatterns.some(pattern => pattern.test(content));
   };
 
+  const detectImageRequest = (content: string) => {
+    const imagePatterns = [
+      /\bimage\b/i,
+      /\bpicture\b/i,
+      /\bphoto\b/i,
+      /\bgenerate.*image\b/i,
+      /\bcreate.*image\b/i,
+      /\bmake.*image\b/i,
+      /\bdraw\b/i,
+      /\billustration\b/i
+    ];
+    return imagePatterns.some(pattern => pattern.test(content));
+  };
+
   const sendMessage = async () => {
     if (!input.trim() && !uploadedImage) return;
+
+    // Check guest usage limit
+    if (!user) {
+      if (guestPromptCount >= 5) {
+        toast({
+          title: "Usage Limit Reached",
+          description: "Please sign in to continue using nexora.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (guestPromptCount === 4) {
+        toast({
+          title: "Last Free Prompt",
+          description: "This is your last free prompt. Sign in to continue using nexora.",
+          variant: "destructive",
+        });
+      }
+      
+      setGuestPromptCount(prev => prev + 1);
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -326,21 +388,24 @@ export const ChatInterface = () => {
     setInput('');
     setUploadedImage(null);
 
-    const isImageRequest = /\b(generate|create|make|draw|show|design|produce|image|picture|photo|art|illustration|drawing)\b/i.test(currentInput);
+    const isImageRequest = detectImageRequest(currentInput);
     const isEssayRequest = detectEssayRequest(currentInput);
 
-    if (isImageRequest) {
+    if (isImageRequest && !isEssayRequest) {
       setIsGeneratingImage(true);
       await generateImage(currentInput);
       return;
     }
 
-    setIsLoading(true);
+    if (isEssayRequest) {
+      setIsGeneratingEssay(true);
+    } else {
+      setIsLoading(true);
+    }
 
     try {
       const modelToUse = uploadedImage ? 'accounts/fireworks/models/llama4-maverick-instruct-basic' : selectedModel;
 
-      // Track API call
       trackApiCall(modelToUse);
 
       const response = await fetch('https://api.fireworks.ai/inference/v1/chat/completions', {
@@ -374,11 +439,10 @@ export const ChatInterface = () => {
       const data = await response.json();
       const responseContent = data.choices[0].message.content;
       
-      // Track model usage
       trackModelUsage(modelToUse);
 
       if (isEssayRequest && responseContent.length > 500) {
-        // For essay requests, show in modal
+        setEssayProgress(100);
         setCurrentEssayContent(responseContent);
         setEssayModalOpen(true);
         
@@ -390,7 +454,6 @@ export const ChatInterface = () => {
         };
         setMessages(prev => [...prev, assistantMessage]);
       } else {
-        // For regular requests, handle code blocks
         const codeBlocks = extractCodeBlocks(responseContent);
         const cleanContent = removeCodeBlocksFromContent(responseContent);
         
@@ -403,7 +466,6 @@ export const ChatInterface = () => {
           setMessages(prev => [...prev, assistantMessage]);
         }
 
-        // Add code blocks as separate messages if they exist
         if (codeBlocks.length > 0) {
           codeBlocks.forEach((code, index) => {
             const codeMessage: Message = {
@@ -426,6 +488,8 @@ export const ChatInterface = () => {
       });
     } finally {
       setIsLoading(false);
+      setIsGeneratingEssay(false);
+      setEssayProgress(0);
     }
   };
 
@@ -551,6 +615,11 @@ export const ChatInterface = () => {
             />
             <span className="text-lg md:text-xl font-medium text-white hidden sm:block">nexora</span>
           </div>
+          {!user && (
+            <div className="text-xs text-gray-400 hidden md:block">
+              {guestPromptCount}/5 free prompts used
+            </div>
+          )}
         </div>
 
         {/* Right side with Upgrade button and User Profile Dropdown */}
@@ -564,48 +633,59 @@ export const ChatInterface = () => {
             Upgrade
           </Button>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center space-x-1 md:space-x-2 hover:bg-gray-800 p-1 md:p-2">
-                <Avatar className="w-6 h-6 md:w-8 md:h-8">
-                  <AvatarImage src={user.photoURL} alt={user.displayName} />
-                  <AvatarFallback className="bg-purple-600 text-white text-xs md:text-sm">
-                    {user.displayName.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-white text-sm md:text-base hidden md:block">{user.displayName}</span>
-                <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white z-50" align="end">
-              <DropdownMenuItem className="flex items-center space-x-2 hover:bg-gray-800">
-                <Avatar className="w-6 h-6">
-                  <AvatarImage src={user.photoURL} alt={user.displayName} />
-                  <AvatarFallback className="bg-purple-600 text-white text-xs">
-                    {user.displayName.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <span className="font-medium">{user.displayName}</span>
-                  <span className="text-xs text-gray-400">{user.email}</span>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => setShowProfile(true)}
-                className="flex items-center space-x-2 hover:bg-gray-800"
-              >
-                <User className="w-4 h-4" />
-                <span>View Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={handleSignOut}
-                className="flex items-center space-x-2 hover:bg-gray-800 text-red-400"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Sign out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center space-x-1 md:space-x-2 hover:bg-gray-800 p-1 md:p-2">
+                  <Avatar className="w-6 h-6 md:w-8 md:h-8">
+                    <AvatarImage src={user.photoURL} alt={user.displayName} />
+                    <AvatarFallback className="bg-purple-600 text-white text-xs md:text-sm">
+                      {user.displayName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-white text-sm md:text-base hidden md:block">{user.displayName}</span>
+                  <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white z-50" align="end">
+                <DropdownMenuItem className="flex items-center space-x-2 hover:bg-gray-800">
+                  <Avatar className="w-6 h-6">
+                    <AvatarImage src={user.photoURL} alt={user.displayName} />
+                    <AvatarFallback className="bg-purple-600 text-white text-xs">
+                      {user.displayName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{user.displayName}</span>
+                    <span className="text-xs text-gray-400">{user.email}</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setShowProfile(true)}
+                  className="flex items-center space-x-2 hover:bg-gray-800"
+                >
+                  <User className="w-4 h-4" />
+                  <span>View Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={handleSignOut}
+                  className="flex items-center space-x-2 hover:bg-gray-800 text-red-400"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              onClick={() => {}}
+              variant="outline"
+              size="sm"
+              className="border-blue-500 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 text-xs md:text-sm px-2 md:px-4"
+            >
+              Sign In
+            </Button>
+          )}
         </div>
       </div>
 
@@ -615,8 +695,13 @@ export const ChatInterface = () => {
           <div className="flex-1 flex items-center justify-center px-4">
             <div className="text-center">
               <h1 className="text-2xl md:text-4xl font-light text-white mb-6 md:mb-8">
-                What do you want to know, <span className="text-purple-400">{user.displayName}</span>?
+                What do you want to know{user ? `, ${user.displayName}` : ''}?
               </h1>
+              {!user && (
+                <p className="text-sm text-gray-400">
+                  {5 - guestPromptCount} free prompts remaining
+                </p>
+              )}
             </div>
           </div>
         ) : (
@@ -701,8 +786,15 @@ export const ChatInterface = () => {
                   </div>
                 </div>
               )}
+              {isGeneratingEssay && (
+                <div className="flex justify-start">
+                  <div className="max-w-2xl">
+                    <div className="text-white text-sm mb-2">We are preparing canvas for you, please wait...</div>
+                    <Progress value={essayProgress} className="w-48 md:w-64 h-2" />
+                  </div>
+                </div>
+              )}
             </div>
-            {/* Fade gradient overlay */}
             <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none"></div>
           </div>
         )}
@@ -719,7 +811,7 @@ export const ChatInterface = () => {
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
             models={MODELS}
-            disabled={isLoading || isGeneratingImage}
+            disabled={isLoading || isGeneratingImage || isGeneratingEssay || (!user && guestPromptCount >= 5)}
             uploadedImage={uploadedImage}
             onRemoveImage={() => setUploadedImage(null)}
           />
