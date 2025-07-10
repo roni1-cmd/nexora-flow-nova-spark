@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { Send, Paperclip, X, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,11 +34,18 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   uploadedImage,
   onRemoveImage
 }) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   
-  useAutoResizeTextarea(textareaRef);
+  const { textareaRef, adjustHeight } = useAutoResizeTextarea({ 
+    minHeight: 24, 
+    maxHeight: 128 
+  });
+
+  // Adjust height when value changes
+  React.useEffect(() => {
+    adjustHeight();
+  }, [value, adjustHeight]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
