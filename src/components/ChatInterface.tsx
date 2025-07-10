@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, X, ChevronDown, LogOut, User, Settings, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -244,7 +243,7 @@ export const ChatInterface = () => {
   const { toast } = useToast();
   const { trackApiCall, trackModelUsage, stats } = useUsageTracking();
 
-  // Load conversations from localStorage
+  // Load conversations from localStorage on component mount
   useEffect(() => {
     const saved = localStorage.getItem('nexora-conversations');
     if (saved) {
@@ -264,7 +263,7 @@ export const ChatInterface = () => {
     }
   }, []);
 
-  // Save conversations to localStorage
+  // Save conversations to localStorage whenever conversations change
   useEffect(() => {
     if (conversations.length > 0) {
       localStorage.setItem('nexora-conversations', JSON.stringify(conversations));
@@ -638,7 +637,7 @@ export const ChatInterface = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black border-b border-gray-800">
+        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black">
           <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
             <Button
               onClick={() => setSidebarOpen(true)}
@@ -729,28 +728,22 @@ export const ChatInterface = () => {
             <div className="flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide" ref={scrollAreaRef}>
               <div className="max-w-3xl mx-auto py-4 space-y-4 md:space-y-6">
                 {messages.map((message) => (
-                  <div key={message.id} className={`group flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div key={message.id} className="group">
                     {message.role === 'user' ? (
-                      <div className="max-w-[85%] md:max-w-xs lg:max-w-md bg-gray-800 text-white rounded-2xl px-3 md:px-4 py-3 self-end">
-                        {message.imageUrl && (
-                          <img 
-                            src={message.imageUrl} 
-                            alt="Uploaded" 
-                            className="max-w-full rounded-lg mb-2"
-                          />
-                        )}
-                        <p className="text-sm leading-relaxed">{message.content}</p>
-                        <MessageActions
-                          content={message.content}
-                          messageId={message.id}
-                          onEdit={(newContent) => editMessage(message.id, newContent)}
-                          onDelete={() => deleteMessage(message.id)}
-                          isEditing={editingMessageId === message.id}
-                          onCancelEdit={() => setEditingMessageId(null)}
-                        />
+                      <div className="flex justify-end mb-2">
+                        <div className="max-w-[85%] md:max-w-xs lg:max-w-md bg-gray-800 text-white rounded-2xl px-3 md:px-4 py-3">
+                          {message.imageUrl && (
+                            <img 
+                              src={message.imageUrl} 
+                              alt="Uploaded" 
+                              className="max-w-full rounded-lg mb-2"
+                            />
+                          )}
+                          <p className="text-sm leading-relaxed">{message.content}</p>
+                        </div>
                       </div>
                     ) : (
-                      <div className="max-w-[95%] md:max-w-2xl">
+                      <div className="max-w-[95%] md:max-w-2xl mb-2">
                         <ReasoningView 
                           reasoning={message.reasoning || ''} 
                           isVisible={selectedModel === 'qwen-qwq-32b' && !!message.reasoning}
@@ -798,18 +791,19 @@ export const ChatInterface = () => {
                             )}
                           </>
                         )}
-                        
-                        <MessageActions
-                          content={message.content}
-                          messageId={message.id}
-                          onRegenerate={() => regenerateResponse(message.id)}
-                          onDelete={() => deleteMessage(message.id)}
-                          onEdit={(newContent) => editMessage(message.id, newContent)}
-                          isEditing={editingMessageId === message.id}
-                          onCancelEdit={() => setEditingMessageId(null)}
-                        />
                       </div>
                     )}
+                    
+                    <MessageActions
+                      content={message.content}
+                      messageId={message.id}
+                      onRegenerate={message.role === 'assistant' ? () => regenerateResponse(message.id) : undefined}
+                      onDelete={() => deleteMessage(message.id)}
+                      onEdit={(newContent) => editMessage(message.id, newContent)}
+                      isEditing={editingMessageId === message.id}
+                      onCancelEdit={() => setEditingMessageId(null)}
+                      isUser={message.role === 'user'}
+                    />
                   </div>
                 ))}
                 {isLoading && (

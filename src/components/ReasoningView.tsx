@@ -16,14 +16,14 @@ export const ReasoningView: React.FC<ReasoningViewProps> = ({ reasoning, isVisib
     <div className="mb-4">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-300 transition-colors mb-2"
+        className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-300 transition-colors mb-2 font-google-sans"
       >
-        <span>AI Reasoning</span>
+        <span>Thinking process</span>
         {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </button>
       
       {isOpen && (
-        <div className="text-xs text-gray-500 whitespace-pre-wrap font-mono mb-4 p-3 bg-gray-900/30 rounded-lg border-l-2 border-purple-500/30">
+        <div className="text-xs text-gray-500 whitespace-pre-wrap font-google-sans mb-4 p-3 rounded-lg">
           {reasoning}
         </div>
       )}

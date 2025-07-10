@@ -1,29 +1,14 @@
 
-"use client";
+import React, { useRef, useState } from 'react';
+import { Send, Paperclip, X, ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useAutoResizeTextarea } from '@/hooks/use-auto-resize-textarea';
 
-/**
- * @author: @kokonutui
- * @description: AI Prompt Input
- * @version: 1.0.0
- * @date: 2025-06-26
- * @license: MIT
- * @website: https://kokonutui.com
- * @github: https://github.com/kokonut-labs/kokonutui
- */
-
-import { ArrowRight, Bot, Check, ChevronDown, Paperclip } from "lucide-react";
-import { useState, useRef } from "react";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
-import { Button } from "@/components/ui/button";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { motion, AnimatePresence } from "framer-motion";
+interface Model {
+  id: string;
+  name: string;
+}
 
 interface AIPromptInputProps {
   value: string;
@@ -31,24 +16,14 @@ interface AIPromptInputProps {
   onSendMessage: () => void;
   onImageUpload: (file: File) => void;
   selectedModel: string;
-  onModelChange: (model: string) => void;
-  models: Array<{ id: string; name: string }>;
+  onModelChange: (modelId: string) => void;
+  models: Model[];
   disabled?: boolean;
   uploadedImage?: string | null;
   onRemoveImage?: () => void;
 }
 
-const NEXORA_SVG = (
-    <div>
-        <img 
-            src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
-            alt="Nexora" 
-            className="w-4 h-4"
-        />
-    </div>
-);
-
-export default function AIPromptInput({
+const AIPromptInput: React.FC<AIPromptInputProps> = ({
   value,
   onChange,
   onSendMessage,
@@ -59,184 +34,159 @@ export default function AIPromptInput({
   disabled = false,
   uploadedImage,
   onRemoveImage
-}: AIPromptInputProps) {
-    const { textareaRef, adjustHeight } = useAutoResizeTextarea({
-        minHeight: 72,
-        maxHeight: 300,
-    });
-    const fileInputRef = useRef<HTMLInputElement>(null);
+}) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  
+  useAutoResizeTextarea(textareaRef, value, 120);
 
-    const MODEL_ICONS: Record<string, React.ReactNode> = {
-        "accounts/fireworks/models/qwen2p5-72b-instruct": NEXORA_SVG,
-        "accounts/fireworks/models/llama4-maverick-instruct-basic": NEXORA_SVG,
-        "accounts/fireworks/models/llama-v3p1-8b-instruct": NEXORA_SVG,
-        "accounts/fireworks/models/deepseek-r1-basic": NEXORA_SVG,
-        "accounts/sentientfoundation-serverless/models/dobby-mini-unhinged-plus-llama-3-1-8b": NEXORA_SVG,
-    };
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (value.trim() || uploadedImage) {
+      onSendMessage();
+    }
+  };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            onSendMessage();
-            adjustHeight(true);
-        }
-    };
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            onImageUpload(file);
-        }
-    };
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      onImageUpload(file);
+    }
+  };
 
-    const getModelDisplayName = (modelId: string) => {
-        return models.find(m => m.id === modelId)?.name || modelId;
-    };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      onImageUpload(file);
+    }
+  };
 
-    return (
-        <div className="w-full py-4 font-google-sans">
-            <div className="bg-white/10 dark:bg-white/10 rounded-2xl p-1.5 border border-white/20">
-                <div className="relative">
-                    <div className="relative flex flex-col">
-                        {uploadedImage && (
-                            <div className="mb-3 mx-4 flex items-center space-x-2">
-                                <img src={uploadedImage} alt="Preview" className="w-10 h-10 md:w-12 md:h-12 rounded object-cover" />
-                                <Button
-                                    onClick={onRemoveImage}
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-red-400 hover:text-red-300 hover:bg-gray-900 text-xs md:text-sm"
-                                >
-                                    Remove
-                                </Button>
-                            </div>
-                        )}
-                        <div
-                            className="overflow-y-auto"
-                            style={{ maxHeight: "400px" }}
-                        >
-                            <Textarea
-                                id="ai-input-15"
-                                value={value}
-                                placeholder={"What can I do for you?"}
-                                className={cn(
-                                    "w-full rounded-xl rounded-b-none px-4 py-3 bg-white/5 border-none text-white placeholder:text-white/70 resize-none focus-visible:ring-0 focus-visible:ring-offset-0",
-                                    "min-h-[72px]"
-                                )}
-                                ref={textareaRef}
-                                onKeyDown={handleKeyDown}
-                                onChange={(e) => {
-                                    onChange(e.target.value);
-                                    adjustHeight();
-                                }}
-                                disabled={disabled}
-                            />
-                        </div>
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
 
-                        <div className="h-14 bg-white/5 rounded-b-xl flex items-center">
-                            <div className="absolute left-3 right-3 bottom-3 flex items-center justify-between w-[calc(100%-24px)]">
-                                <div className="flex items-center gap-2">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                className="flex items-center gap-1 h-8 pl-1 pr-2 text-xs rounded-md text-white hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500"
-                                            >
-                                                <AnimatePresence mode="wait">
-                                                    <motion.div
-                                                        key={selectedModel}
-                                                        initial={{
-                                                            opacity: 0,
-                                                            y: -5,
-                                                        }}
-                                                        animate={{
-                                                            opacity: 1,
-                                                            y: 0,
-                                                        }}
-                                                        exit={{
-                                                            opacity: 0,
-                                                            y: 5,
-                                                        }}
-                                                        transition={{
-                                                            duration: 0.15,
-                                                        }}
-                                                        className="flex items-center gap-1"
-                                                    >
-                                                        {MODEL_ICONS[selectedModel] || <Bot className="w-4 h-4 opacity-50" />}
-                                                        {getModelDisplayName(selectedModel)}
-                                                        <ChevronDown className="w-3 h-3 opacity-50" />
-                                                    </motion.div>
-                                                </AnimatePresence>
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent
-                                            className={cn(
-                                                "min-w-[10rem]",
-                                                "border-white/20 bg-gray-900 text-white z-50"
-                                            )}
-                                        >
-                                            {models.map((model) => (
-                                                <DropdownMenuItem
-                                                    key={model.id}
-                                                    onSelect={() => onModelChange(model.id)}
-                                                    className="flex items-center justify-between gap-2 text-white hover:bg-white/10"
-                                                >
-                                                    <div className="flex items-center gap-2">
-                                                        {MODEL_ICONS[model.id] || (
-                                                            <Bot className="w-4 h-4 opacity-50" />
-                                                        )}
-                                                        <span>{model.name}</span>
-                                                    </div>
-                                                    {selectedModel === model.id && (
-                                                        <Check className="w-4 h-4 text-blue-500" />
-                                                    )}
-                                                </DropdownMenuItem>
-                                            ))}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                    <div className="h-4 w-px bg-white/20 mx-0.5" />
-                                    <label
-                                        className={cn(
-                                            "rounded-lg p-2 bg-white/5 cursor-pointer",
-                                            "hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500",
-                                            "text-white/60 hover:text-white"
-                                        )}
-                                        aria-label="Attach file"
-                                    >
-                                        <input 
-                                            ref={fileInputRef}
-                                            type="file" 
-                                            className="hidden" 
-                                            accept="image/*"
-                                            onChange={handleFileChange}
-                                        />
-                                        <Paperclip className="w-4 h-4 transition-colors" />
-                                    </label>
-                                </div>
-                                <button
-                                    type="button"
-                                    className={cn(
-                                        "rounded-lg p-2 bg-white/5",
-                                        "hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500"
-                                    )}
-                                    aria-label="Send message"
-                                    disabled={!value.trim() || disabled}
-                                    onClick={onSendMessage}
-                                >
-                                    <ArrowRight
-                                        className={cn(
-                                            "w-4 h-4 text-white transition-opacity duration-200",
-                                            value.trim() && !disabled
-                                                ? "opacity-100"
-                                                : "opacity-30"
-                                        )}
-                                    />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const selectedModelName = models.find(m => m.id === selectedModel)?.name || 'Select Model';
+
+  return (
+    <div className="relative">
+      {uploadedImage && (
+        <div className="mb-3 relative inline-block">
+          <img 
+            src={uploadedImage} 
+            alt="Uploaded" 
+            className="max-w-xs max-h-32 rounded-lg border border-gray-700"
+          />
+          <Button
+            onClick={onRemoveImage}
+            size="sm"
+            variant="ghost"
+            className="absolute -top-2 -right-2 h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white rounded-full"
+          >
+            <X className="w-3 h-3" />
+          </Button>
         </div>
-    );
-}
+      )}
+      
+      <form onSubmit={handleSubmit} className="relative">
+        <div 
+          className={`flex items-end gap-2 p-3 bg-gray-900 rounded-2xl border transition-colors ${
+            isDragOver 
+              ? 'border-purple-500 bg-purple-500/5' 
+              : 'border-gray-700 hover:border-gray-600'
+          }`}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+        >
+          <div className="flex-1 min-w-0">
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Message nexora..."
+              disabled={disabled}
+              className="w-full bg-transparent text-white placeholder-gray-400 resize-none border-none outline-none text-sm leading-relaxed min-h-[24px] max-h-32"
+              rows={1}
+            />
+          </div>
+          
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-xs text-gray-400 hover:text-white h-8 px-3"
+                  disabled={disabled}
+                >
+                  <span className="max-w-32 truncate">{selectedModelName}</span>
+                  <ChevronDown className="w-3 h-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white">
+                {models.map((model) => (
+                  <DropdownMenuItem
+                    key={model.id}
+                    onClick={() => onModelChange(model.id)}
+                    className={`cursor-pointer hover:bg-gray-800 ${
+                      selectedModel === model.id ? 'bg-gray-800 text-purple-400' : ''
+                    }`}
+                  >
+                    {model.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              variant="ghost"
+              size="sm"
+              className="text-gray-400 hover:text-white h-8 w-8 p-0"
+              disabled={disabled}
+            >
+              <Paperclip className="w-4 h-4" />
+            </Button>
+            
+            <Button
+              type="submit"
+              size="sm"
+              disabled={disabled || (!value.trim() && !uploadedImage)}
+              className="bg-purple-600 hover:bg-purple-700 h-8 w-8 p-0"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </form>
+      
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+    </div>
+  );
+};
+
+export default AIPromptInput;
