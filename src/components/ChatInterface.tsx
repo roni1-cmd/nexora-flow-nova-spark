@@ -13,7 +13,7 @@ import { EssayCanvas } from './EssayCanvas';
 import { EssayModal } from './EssayModal';
 import { ReasoningView } from './ReasoningView';
 import { MessageActions } from './MessageActions';
-import { ConversationManager } from './ConversationManager';
+import { ConversationSidebar } from './ConversationSidebar';
 import { useUsageTracking } from '@/hooks/useUsageTracking';
 import AIPromptInput from './AIPromptInput';
 import AITextLoading from './AITextLoading';
@@ -92,6 +92,14 @@ const TypewriterText = ({ text }: { text: string }) => {
   }, [currentIndex, text]);
 
   return <span>{displayedText}</span>;
+};
+
+const formatMarkdown = (text: string) => {
+  // Convert markdown formatting to JSX
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/##\s+(.*?)(?=\n|$)/g, '<h2 class="text-lg font-semibold mt-4 mb-2 text-white">$1</h2>')
+    .replace(/\n/g, '<br/>');
 };
 
 const CodeCanvas = ({ code }: { code: string }) => (
@@ -230,6 +238,7 @@ export const ChatInterface = () => {
   const [essayModalOpen, setEssayModalOpen] = useState(false);
   const [currentEssayContent, setCurrentEssayContent] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -614,203 +623,222 @@ export const ChatInterface = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-black text-white font-google-sans">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black border-b border-gray-800 md:border-none">
-        <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
-          <div className="flex items-center space-x-2 md:space-x-3">
-            <img 
-              src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
-              alt="nexora" 
-              className="w-6 h-6 md:w-8 md:h-8 flex-shrink-0"
-            />
-            <span className="text-lg md:text-xl font-medium text-white hidden sm:block">nexora</span>
-          </div>
-          
-          <ConversationManager
-            conversations={conversations}
-            currentConversationId={currentConversationId}
-            onSelectConversation={loadConversation}
-            onNewConversation={createNewConversation}
-            onDeleteConversation={deleteConversation}
-          />
-        </div>
-
-        <div className="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
-          <Button
-            onClick={handleUpgradeClick}
-            variant="outline"
-            size="sm"
-            className="border-purple-500 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 text-xs md:text-sm px-2 md:px-4"
-          >
-            <Zap className="w-3 h-3 mr-1" />
-            Upgrade
-          </Button>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center space-x-1 md:space-x-2 hover:bg-gray-800 p-1 md:p-2">
-                <Avatar className="w-6 h-6 md:w-8 md:h-8">
-                  <AvatarImage src={user.photoURL} alt={user.displayName} />
-                  <AvatarFallback className="bg-purple-600 text-white text-xs md:text-sm">
-                    {user.displayName.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-white text-sm md:text-base hidden md:block">{user.displayName}</span>
-                <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white z-50" align="end">
-              <DropdownMenuItem className="flex items-center space-x-2 hover:bg-gray-800">
-                <Avatar className="w-6 h-6">
-                  <AvatarImage src={user.photoURL} alt={user.displayName} />
-                  <AvatarFallback className="bg-purple-600 text-white text-xs">
-                    {user.displayName.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <span className="font-medium">{user.displayName}</span>
-                  <span className="text-xs text-gray-400">{user.email}</span>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => setShowProfile(true)}
-                className="flex items-center space-x-2 hover:bg-gray-800"
-              >
-                <User className="w-4 h-4" />
-                <span>View Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={handleSignOut}
-                className="flex items-center space-x-2 hover:bg-gray-800 text-red-400"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Sign out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-
-      {/* Messages or Initial State */}
-      <div className="flex-1 flex flex-col overflow-hidden relative">
-        {messages.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center px-4">
-            <div className="text-center">
-              <h1 className="text-2xl md:text-4xl font-light text-white mb-6 md:mb-8">
-                What do you want to know, <span className="text-purple-400">{user.displayName}</span>?
-              </h1>
+    <div className="flex h-screen bg-black text-white font-google-sans">
+      {/* Sidebar */}
+      <ConversationSidebar
+        conversations={conversations}
+        currentConversationId={currentConversationId}
+        onSelectConversation={loadConversation}
+        onNewConversation={createNewConversation}
+        onDeleteConversation={deleteConversation}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+      
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black border-b border-gray-800">
+          <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
+            <Button
+              onClick={() => setSidebarOpen(true)}
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-gray-800 lg:hidden"
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+            
+            <div className="flex items-center space-x-2 md:space-x-3">
+              <img 
+                src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
+                alt="nexora" 
+                className="w-6 h-6 md:w-8 md:h-8 flex-shrink-0"
+              />
+              <span className="text-lg md:text-xl font-medium text-white hidden sm:block">nexora</span>
             </div>
           </div>
-        ) : (
-          <div className="flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide" ref={scrollAreaRef}>
-            <div className="max-w-3xl mx-auto py-4 space-y-4 md:space-y-6">
-              {messages.map((message) => (
-                <div key={message.id} className={`group flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  {message.role === 'user' ? (
-                    <div className="max-w-[85%] md:max-w-xs lg:max-w-md bg-gray-800 text-white rounded-2xl px-3 md:px-4 py-2">
-                      {message.imageUrl && (
-                        <img 
-                          src={message.imageUrl} 
-                          alt="Uploaded" 
-                          className="max-w-full rounded-lg mb-2"
+
+          <div className="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
+            <Button
+              onClick={handleUpgradeClick}
+              variant="outline"
+              size="sm"
+              className="border-purple-500 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 text-xs md:text-sm px-2 md:px-4"
+            >
+              <Zap className="w-3 h-3 mr-1" />
+              Upgrade
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center space-x-1 md:space-x-2 hover:bg-gray-800 p-1 md:p-2">
+                  <Avatar className="w-6 h-6 md:w-8 md:h-8">
+                    <AvatarImage src={user.photoURL} alt={user.displayName} />
+                    <AvatarFallback className="bg-purple-600 text-white text-xs md:text-sm">
+                      {user.displayName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-white text-sm md:text-base hidden md:block">{user.displayName}</span>
+                  <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white z-50" align="end">
+                <DropdownMenuItem className="flex items-center space-x-2 hover:bg-gray-800">
+                  <Avatar className="w-6 h-6">
+                    <AvatarImage src={user.photoURL} alt={user.displayName} />
+                    <AvatarFallback className="bg-purple-600 text-white text-xs">
+                      {user.displayName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{user.displayName}</span>
+                    <span className="text-xs text-gray-400">{user.email}</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setShowProfile(true)}
+                  className="flex items-center space-x-2 hover:bg-gray-800"
+                >
+                  <User className="w-4 h-4" />
+                  <span>View Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={handleSignOut}
+                  className="flex items-center space-x-2 hover:bg-gray-800 text-red-400"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Messages or Initial State */}
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {messages.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center px-4">
+              <div className="text-center">
+                <h1 className="text-2xl md:text-4xl font-light text-white mb-6 md:mb-8">
+                  What do you want to know, <span className="text-purple-400">{user.displayName}</span>?
+                </h1>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide" ref={scrollAreaRef}>
+              <div className="max-w-3xl mx-auto py-4 space-y-4 md:space-y-6">
+                {messages.map((message) => (
+                  <div key={message.id} className={`group flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    {message.role === 'user' ? (
+                      <div className="max-w-[85%] md:max-w-xs lg:max-w-md bg-gray-800 text-white rounded-2xl px-3 md:px-4 py-3 self-end">
+                        {message.imageUrl && (
+                          <img 
+                            src={message.imageUrl} 
+                            alt="Uploaded" 
+                            className="max-w-full rounded-lg mb-2"
+                          />
+                        )}
+                        <p className="text-sm leading-relaxed">{message.content}</p>
+                        <MessageActions
+                          content={message.content}
+                          messageId={message.id}
+                          onEdit={(newContent) => editMessage(message.id, newContent)}
+                          onDelete={() => deleteMessage(message.id)}
+                          isEditing={editingMessageId === message.id}
+                          onCancelEdit={() => setEditingMessageId(null)}
                         />
-                      )}
-                      <p className="text-sm">{message.content}</p>
-                      <MessageActions
-                        content={message.content}
-                        messageId={message.id}
-                        onEdit={(newContent) => editMessage(message.id, newContent)}
-                        onDelete={() => deleteMessage(message.id)}
-                        isEditing={editingMessageId === message.id}
-                        onCancelEdit={() => setEditingMessageId(null)}
-                      />
-                    </div>
-                  ) : (
-                    <div className="max-w-[95%] md:max-w-2xl">
-                      <ReasoningView 
-                        reasoning={message.reasoning || ''} 
-                        isVisible={selectedModel === 'qwen-qwq-32b' && !!message.reasoning}
-                      />
-                      
-                      {message.isCode ? (
-                        <CodeCanvas code={message.content} />
-                      ) : message.isEssay ? (
-                        <div className="bg-gray-900 rounded-lg p-3 md:p-4 my-3 border border-gray-700">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="text-xs text-gray-400 font-medium">Essay Generated</div>
-                            <Button
-                              onClick={() => {
-                                setCurrentEssayContent(message.content);
-                                setEssayModalOpen(true);
-                              }}
-                              size="sm"
-                              className="bg-purple-600 hover:bg-purple-700 h-6 md:h-7 px-2 text-xs"
-                            >
-                              Open in Editor
-                            </Button>
+                      </div>
+                    ) : (
+                      <div className="max-w-[95%] md:max-w-2xl">
+                        <ReasoningView 
+                          reasoning={message.reasoning || ''} 
+                          isVisible={selectedModel === 'qwen-qwq-32b' && !!message.reasoning}
+                        />
+                        
+                        {message.isCode ? (
+                          <CodeCanvas code={message.content} />
+                        ) : message.isEssay ? (
+                          <div className="bg-gray-900 rounded-lg p-3 md:p-4 my-3 border border-gray-700">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="text-xs text-gray-400 font-medium">Essay Generated</div>
+                              <Button
+                                onClick={() => {
+                                  setCurrentEssayContent(message.content);
+                                  setEssayModalOpen(true);
+                                }}
+                                size="sm"
+                                className="bg-purple-600 hover:bg-purple-700 h-6 md:h-7 px-2 text-xs"
+                              >
+                                Open in Editor
+                              </Button>
+                            </div>
+                            <div className="text-xs md:text-sm text-gray-300 line-clamp-4">
+                              {message.content.substring(0, 200)}...
+                            </div>
                           </div>
-                          <div className="text-xs md:text-sm text-gray-300 line-clamp-4">
-                            {message.content.substring(0, 200)}...
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="text-white whitespace-pre-wrap text-sm leading-relaxed">
-                            <TypewriterText text={message.content} />
-                          </div>
-                          {message.imageUrl && (
-                            <div className="mt-3">
-                              <img 
-                                src={message.imageUrl} 
-                                alt="Generated" 
-                                className="max-w-full md:max-w-sm rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={() => setFullScreenImage(message.imageUrl!)}
+                        ) : (
+                          <>
+                            <div className="text-white whitespace-pre-wrap text-sm leading-relaxed">
+                              <div 
+                                dangerouslySetInnerHTML={{ 
+                                  __html: formatMarkdown(message.content) 
+                                }} 
                               />
                             </div>
-                          )}
-                        </>
-                      )}
-                      
-                      <MessageActions
-                        content={message.content}
-                        messageId={message.id}
-                        onRegenerate={() => regenerateResponse(message.id)}
-                        onDelete={() => deleteMessage(message.id)}
-                        onEdit={(newContent) => editMessage(message.id, newContent)}
-                        isEditing={editingMessageId === message.id}
-                        onCancelEdit={() => setEditingMessageId(null)}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex justify-start">
-                  <AITextLoading texts={["Thinking...", "Processing...", "Analyzing...", "Still thinking...", "Almost there..."]} />
-                </div>
-              )}
+                            {message.imageUrl && (
+                              <div className="mt-3">
+                                <img 
+                                  src={message.imageUrl} 
+                                  alt="Generated" 
+                                  className="max-w-full md:max-w-sm rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => setFullScreenImage(message.imageUrl!)}
+                                />
+                              </div>
+                            )}
+                          </>
+                        )}
+                        
+                        <MessageActions
+                          content={message.content}
+                          messageId={message.id}
+                          onRegenerate={() => regenerateResponse(message.id)}
+                          onDelete={() => deleteMessage(message.id)}
+                          onEdit={(newContent) => editMessage(message.id, newContent)}
+                          isEditing={editingMessageId === message.id}
+                          onCancelEdit={() => setEditingMessageId(null)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <AITextLoading texts={["Thinking...", "Processing...", "Analyzing...", "Still thinking...", "Almost there..."]} />
+                  </div>
+                )}
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none"></div>
             </div>
-            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none"></div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
-      {/* Input Area */}
-      <div className="px-2 md:px-4 pb-4 md:pb-6 pt-2 bg-black">
-        <div className="max-w-3xl mx-auto">
-          <AIPromptInput
-            value={input}
-            onChange={setInput}
-            onSendMessage={() => sendMessage()}
-            onImageUpload={handleImageUpload}
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-            models={MODELS}
-            disabled={isLoading}
-            uploadedImage={uploadedImage}
-            onRemoveImage={() => setUploadedImage(null)}
-          />
+        {/* Input Area */}
+        <div className="px-2 md:px-4 pb-4 md:pb-6 pt-2 bg-black">
+          <div className="max-w-3xl mx-auto">
+            <AIPromptInput
+              value={input}
+              onChange={setInput}
+              onSendMessage={() => sendMessage()}
+              onImageUpload={handleImageUpload}
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+              models={MODELS}
+              disabled={isLoading}
+              uploadedImage={uploadedImage}
+              onRemoveImage={() => setUploadedImage(null)}
+            />
+          </div>
         </div>
       </div>
 

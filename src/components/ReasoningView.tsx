@@ -1,8 +1,6 @@
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Brain } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ReasoningViewProps {
   reasoning: string;
@@ -16,27 +14,19 @@ export const ReasoningView: React.FC<ReasoningViewProps> = ({ reasoning, isVisib
 
   return (
     <div className="mb-4">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2 text-xs bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/30"
-          >
-            <Brain className="w-3 h-3" />
-            AI Reasoning
-            {isOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <div className="bg-muted/50 rounded-lg p-3 border border-muted-foreground/20">
-            <div className="text-xs text-muted-foreground mb-2 font-medium">Thinking Process:</div>
-            <div className="text-sm text-muted-foreground whitespace-pre-wrap font-mono">
-              {reasoning}
-            </div>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-300 transition-colors mb-2"
+      >
+        <span>AI Reasoning</span>
+        {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </button>
+      
+      {isOpen && (
+        <div className="text-xs text-gray-500 whitespace-pre-wrap font-mono mb-4 p-3 bg-gray-900/30 rounded-lg border-l-2 border-purple-500/30">
+          {reasoning}
+        </div>
+      )}
     </div>
   );
 };
