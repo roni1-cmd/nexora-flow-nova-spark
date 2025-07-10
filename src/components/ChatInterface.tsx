@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, X, ChevronDown, LogOut, User, Settings, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -390,40 +391,6 @@ export const ChatInterface = () => {
     }
   };
 
-  const archiveConversation = (conversationId: string) => {
-    // Archive functionality - could move to a separate archived conversations list
-    const conversation = conversations.find(c => c.id === conversationId);
-    if (conversation) {
-      const archived = JSON.parse(localStorage.getItem('nexora-archived') || '[]');
-      archived.push({ ...conversation, archivedAt: new Date() });
-      localStorage.setItem('nexora-archived', JSON.stringify(archived));
-      deleteConversation(conversationId);
-      toast({
-        title: "Conversation Archived",
-        description: "The conversation has been moved to your archive.",
-      });
-    }
-  };
-
-  const exportConversation = (conversationId: string) => {
-    const conversation = conversations.find(c => c.id === conversationId);
-    if (conversation) {
-      const dataStr = JSON.stringify(conversation, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `nexora-conversation-${conversation.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-      
-      toast({
-        title: "Export Complete",
-        description: "Conversation has been exported as JSON file.",
-      });
-    }
-  };
-
   const sendMessage = async (messageContent?: string) => {
     const contentToSend = messageContent || input;
     if (!contentToSend.trim() && !uploadedImage) return;
@@ -664,8 +631,6 @@ export const ChatInterface = () => {
         onSelectConversation={loadConversation}
         onNewConversation={createNewConversation}
         onDeleteConversation={deleteConversation}
-        onArchiveConversation={archiveConversation}
-        onExportConversation={exportConversation}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -755,7 +720,7 @@ export const ChatInterface = () => {
           {messages.length === 0 ? (
             <div className="flex-1 flex items-center justify-center px-4">
               <div className="text-center">
-                <h1 className="text-2xl md:text-4xl font-light text-white mb-6 md:mb-8 font-google-sans">
+                <h1 className="text-2xl md:text-4xl font-light text-white mb-6 md:mb-8">
                   What do you want to know, <span className="text-purple-400">{user.displayName}</span>?
                 </h1>
               </div>
@@ -766,7 +731,7 @@ export const ChatInterface = () => {
                 {messages.map((message) => (
                   <div key={message.id} className={`group flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     {message.role === 'user' ? (
-                      <div className="max-w-[85%] md:max-w-xs lg:max-w-md bg-gray-800 text-white rounded-2xl px-3 md:px-4 py-3">
+                      <div className="max-w-[85%] md:max-w-xs lg:max-w-md bg-gray-800 text-white rounded-2xl px-3 md:px-4 py-3 self-end">
                         {message.imageUrl && (
                           <img 
                             src={message.imageUrl} 
@@ -774,7 +739,7 @@ export const ChatInterface = () => {
                             className="max-w-full rounded-lg mb-2"
                           />
                         )}
-                        <p className="text-sm leading-relaxed font-google-sans">{message.content}</p>
+                        <p className="text-sm leading-relaxed">{message.content}</p>
                         <MessageActions
                           content={message.content}
                           messageId={message.id}
@@ -796,25 +761,25 @@ export const ChatInterface = () => {
                         ) : message.isEssay ? (
                           <div className="bg-gray-900 rounded-lg p-3 md:p-4 my-3 border border-gray-700">
                             <div className="flex items-center justify-between mb-3">
-                              <div className="text-xs text-gray-400 font-medium font-google-sans">Essay Generated</div>
+                              <div className="text-xs text-gray-400 font-medium">Essay Generated</div>
                               <Button
                                 onClick={() => {
                                   setCurrentEssayContent(message.content);
                                   setEssayModalOpen(true);
                                 }}
                                 size="sm"
-                                className="bg-purple-600 hover:bg-purple-700 h-6 md:h-7 px-2 text-xs font-google-sans"
+                                className="bg-purple-600 hover:bg-purple-700 h-6 md:h-7 px-2 text-xs"
                               >
                                 Open in Editor
                               </Button>
                             </div>
-                            <div className="text-xs md:text-sm text-gray-300 line-clamp-4 font-google-sans">
+                            <div className="text-xs md:text-sm text-gray-300 line-clamp-4">
                               {message.content.substring(0, 200)}...
                             </div>
                           </div>
                         ) : (
                           <>
-                            <div className="text-white whitespace-pre-wrap text-sm leading-relaxed font-google-sans">
+                            <div className="text-white whitespace-pre-wrap text-sm leading-relaxed">
                               <div 
                                 dangerouslySetInnerHTML={{ 
                                   __html: formatMarkdown(message.content) 
