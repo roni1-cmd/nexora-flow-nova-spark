@@ -25,34 +25,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
 
-const OPENAI_SVG = (
-    <div>
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="256"
-            height="260"
-            preserveAspectRatio="xMidYMid"
-            viewBox="0 0 256 260"
-            aria-label="o3-mini icon"
-            className="dark:hidden block"
-        >
-            <title>OpenAI Icon Light</title>
-            
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="256"
-            height="260"
-            preserveAspectRatio="xMidYMid"
-            viewBox="0 0 256 260"
-            aria-label="o3-mini icon"
-            className="hidden dark:block"
-        >
-            <title>OpenAI Icon Dark</title>
-           
-        </svg>
-    </div>
-);
-
 interface AIPromptInputProps {
   value: string;
   onChange: (value: string) => void;
