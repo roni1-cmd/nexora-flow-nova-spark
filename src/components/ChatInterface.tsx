@@ -18,6 +18,7 @@ import AIPromptInput from './AIPromptInput';
 import AITextLoading from './AITextLoading';
 import CustomLoader from './CustomLoader';
 import ConfirmDialog from './ConfirmDialog';
+import AnimatedLoader from './AnimatedLoader';
 
 interface Message {
   id: string;
@@ -71,10 +72,13 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 const TypingAnimation = () => (
-  <div className="flex space-x-1 p-3">
-    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+  <div className="flex items-center space-x-3 p-3">
+    <AnimatedLoader />
+    <div className="flex space-x-1">
+      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+    </div>
   </div>
 );
 
@@ -250,6 +254,31 @@ export const ChatInterface = () => {
     conversationId?: string;
     type: 'message' | 'conversation';
   }>({ isOpen: false, type: 'message' });
+
+  // Add system theme detection
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const handleThemeChange = (e: MediaQueryListEvent) => {
+      if (e.matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+
+    // Set initial theme
+    if (mediaQuery.matches) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+
+    // Listen for changes
+    mediaQuery.addEventListener('change', handleThemeChange);
+
+    return () => mediaQuery.removeEventListener('change', handleThemeChange);
+  }, []);
 
   // Load conversations from localStorage on component mount
   useEffect(() => {
@@ -834,7 +863,7 @@ export const ChatInterface = () => {
                 ))}
                 {isLoading && (
                   <div className="flex justify-start">
-                    <AITextLoading texts={["Thinking...", "Processing...", "Analyzing...", "Still thinking...", "Almost there..."]} />
+                    <TypingAnimation />
                   </div>
                 )}
               </div>

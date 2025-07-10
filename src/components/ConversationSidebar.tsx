@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Plus, Trash2, Calendar, X, Search, Download, Archive, BarChart3, Settings } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, Calendar, X, Search, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
@@ -50,16 +50,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     conv.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     conv.lastMessage.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const exportConversations = () => {
-    const dataStr = JSON.stringify(conversations, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    const exportFileDefaultName = 'nexora-conversations.json';
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-  };
 
   return (
     <>
@@ -133,27 +123,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                     className="pl-10 bg-gray-900 border-gray-700 text-white placeholder-gray-400"
                   />
                 </div>
-              </div>
-
-              {/* Actions */}
-              <div className="px-4 pb-4 flex gap-2">
-                <Button
-                  onClick={exportConversations}
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-400 hover:text-white flex-1"
-                >
-                  <Download className="w-4 h-4 mr-1" />
-                  Export
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-400 hover:text-white flex-1"
-                >
-                  <BarChart3 className="w-4 h-4 mr-1" />
-                  Stats
-                </Button>
               </div>
             </>
           )}
