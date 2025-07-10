@@ -39,7 +39,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   
-  useAutoResizeTextarea(textareaRef, value, 120);
+  useAutoResizeTextarea(textareaRef);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
