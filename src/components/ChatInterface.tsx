@@ -390,12 +390,12 @@ export const ChatInterface = () => {
     }
   };
 
-  const deleteConversation = (conversationId: string) => {
-    setConversations(prev => prev.filter(c => c.id !== conversationId));
-    if (currentConversationId === conversationId) {
-      setCurrentConversationId(null);
-      setMessages([]);
-    }
+  const handleDeleteConversation = (conversationId: string) => {
+    setConfirmDelete({
+      isOpen: true,
+      conversationId,
+      type: 'conversation'
+    });
   };
 
   const sendMessage = async (messageContent?: string) => {
@@ -567,14 +567,6 @@ export const ChatInterface = () => {
     setConfirmDelete({ isOpen: false, type: 'message' });
   };
 
-  const deleteConversation = (conversationId: string) => {
-    setConfirmDelete({
-      isOpen: true,
-      conversationId,
-      type: 'conversation'
-    });
-  };
-
   const confirmDeleteConversation = () => {
     if (confirmDelete.conversationId) {
       setConversations(prev => prev.filter(c => c.id !== confirmDelete.conversationId));
@@ -663,7 +655,7 @@ export const ChatInterface = () => {
         currentConversationId={currentConversationId}
         onSelectConversation={loadConversation}
         onNewConversation={createNewConversation}
-        onDeleteConversation={deleteConversation}
+        onDeleteConversation={handleDeleteConversation}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
