@@ -720,7 +720,7 @@ export const ChatInterface = () => {
                       <MessageActions
                         content={message.content}
                         messageId={message.id}
-                        onEdit={editMessage}
+                        onEdit={(newContent) => editMessage(message.id, newContent)}
                         onDelete={() => deleteMessage(message.id)}
                         isEditing={editingMessageId === message.id}
                         onCancelEdit={() => setEditingMessageId(null)}
@@ -777,7 +777,7 @@ export const ChatInterface = () => {
                         messageId={message.id}
                         onRegenerate={() => regenerateResponse(message.id)}
                         onDelete={() => deleteMessage(message.id)}
-                        onEdit={editMessage}
+                        onEdit={(newContent) => editMessage(message.id, newContent)}
                         isEditing={editingMessageId === message.id}
                         onCancelEdit={() => setEditingMessageId(null)}
                       />
