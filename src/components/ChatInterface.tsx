@@ -16,6 +16,8 @@ import { ConversationSidebar } from './ConversationSidebar';
 import { useUsageTracking } from '@/hooks/useUsageTracking';
 import AIPromptInput from './AIPromptInput';
 import AITextLoading from './AITextLoading';
+import CustomLoader from './CustomLoader';
+import ConfirmDialog from './ConfirmDialog';
 
 interface Message {
   id: string;
@@ -242,6 +244,12 @@ export const ChatInterface = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { trackApiCall, trackModelUsage, stats } = useUsageTracking();
+  const [confirmDelete, setConfirmDelete] = useState<{
+    isOpen: boolean;
+    messageId?: string;
+    conversationId?: string;
+    type: 'message' | 'conversation';
+  }>({ isOpen: false, type: 'message' });
 
   // Load conversations from localStorage on component mount
   useEffect(() => {
@@ -543,9 +551,39 @@ export const ChatInterface = () => {
   };
 
   const deleteMessage = (messageId: string) => {
-    const newMessages = messages.filter(m => m.id !== messageId);
-    setMessages(newMessages);
-    updateConversation(newMessages);
+    setConfirmDelete({
+      isOpen: true,
+      messageId,
+      type: 'message'
+    });
+  };
+
+  const confirmDeleteMessage = () => {
+    if (confirmDelete.messageId) {
+      const newMessages = messages.filter(m => m.id !== confirmDelete.messageId);
+      setMessages(newMessages);
+      updateConversation(newMessages);
+    }
+    setConfirmDelete({ isOpen: false, type: 'message' });
+  };
+
+  const deleteConversation = (conversationId: string) => {
+    setConfirmDelete({
+      isOpen: true,
+      conversationId,
+      type: 'conversation'
+    });
+  };
+
+  const confirmDeleteConversation = () => {
+    if (confirmDelete.conversationId) {
+      setConversations(prev => prev.filter(c => c.id !== confirmDelete.conversationId));
+      if (currentConversationId === confirmDelete.conversationId) {
+        setCurrentConversationId(null);
+        setMessages([]);
+      }
+    }
+    setConfirmDelete({ isOpen: false, type: 'conversation' });
   };
 
   const editMessage = (messageId: string, newContent: string) => {
@@ -588,11 +626,7 @@ export const ChatInterface = () => {
   };
 
   if (authLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-black text-white">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
+    return <CustomLoader />;
   }
 
   if (!user) {
@@ -819,20 +853,18 @@ export const ChatInterface = () => {
 
         {/* Input Area */}
         <div className="px-2 md:px-4 pb-4 md:pb-6 pt-2 bg-black">
-          <div className="max-w-3xl mx-auto">
-            <AIPromptInput
-              value={input}
-              onChange={setInput}
-              onSendMessage={() => sendMessage()}
-              onImageUpload={handleImageUpload}
-              selectedModel={selectedModel}
-              onModelChange={setSelectedModel}
-              models={MODELS}
-              disabled={isLoading}
-              uploadedImage={uploadedImage}
-              onRemoveImage={() => setUploadedImage(null)}
-            />
-          </div>
+          <AIPromptInput
+            value={input}
+            onChange={setInput}
+            onSendMessage={() => sendMessage()}
+            onImageUpload={handleImageUpload}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            models={MODELS}
+            disabled={isLoading}
+            uploadedImage={uploadedImage}
+            onRemoveImage={() => setUploadedImage(null)}
+          />
         </div>
       </div>
 
@@ -850,6 +882,20 @@ export const ChatInterface = () => {
           onClose={() => setFullScreenImage(null)} 
         />
       )}
+
+      <ConfirmDialog
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete({ isOpen: false, type: 'message' })}
+        onConfirm={confirmDelete.type === 'message' ? confirmDeleteMessage : confirmDeleteConversation}
+        title={confirmDelete.type === 'message' ? "Delete Message" : "Delete Conversation"}
+        description={
+          confirmDelete.type === 'message' 
+            ? "Are you sure you want to delete this message? This action cannot be undone."
+            : "Are you sure you want to delete this conversation? All messages will be permanently removed."
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 };

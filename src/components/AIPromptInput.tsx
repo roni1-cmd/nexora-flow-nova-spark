@@ -1,7 +1,10 @@
+
 import React, { useRef, useState } from 'react';
-import { Send, Paperclip, X, ChevronDown } from 'lucide-react';
+import { ArrowRight, Paperclip, X, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import { useAutoResizeTextarea } from '@/hooks/use-auto-resize-textarea';
 
 interface Model {
@@ -38,19 +41,15 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const [isDragOver, setIsDragOver] = useState(false);
   
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({ 
-    minHeight: 24, 
-    maxHeight: 128 
+    minHeight: 72, 
+    maxHeight: 300 
   });
-
-  // Adjust height when value changes
-  React.useEffect(() => {
-    adjustHeight();
-  }, [value, adjustHeight]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (value.trim() || uploadedImage) {
       onSendMessage();
+      adjustHeight(true);
     }
   };
 
@@ -90,7 +89,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const selectedModelName = models.find(m => m.id === selectedModel)?.name || 'Select Model';
 
   return (
-    <div className="relative">
+    <div className="relative w-full max-w-4xl mx-auto">
       {uploadedImage && (
         <div className="mb-3 relative inline-block">
           <img 
@@ -110,87 +109,106 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
       )}
       
       <form onSubmit={handleSubmit} className="relative">
-        <div 
-          className={`flex items-end gap-2 p-3 bg-gray-900 rounded-2xl border transition-colors ${
-            isDragOver 
-              ? 'border-purple-500 bg-purple-500/5' 
-              : 'border-gray-700 hover:border-gray-600'
-          }`}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-        >
-          <div className="flex-1 min-w-0">
-            <textarea
-              ref={textareaRef}
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Message nexora..."
-              disabled={disabled}
-              className="w-full bg-transparent text-white placeholder-gray-400 resize-none border-none outline-none text-sm leading-relaxed min-h-[24px] max-h-32"
-              rows={1}
-            />
-          </div>
-          
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-xs text-gray-400 hover:text-white h-8 px-3"
-                  disabled={disabled}
-                >
-                  <span className="max-w-32 truncate">{selectedModelName}</span>
-                  <ChevronDown className="w-3 h-3 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white">
-                {models.map((model) => (
-                  <DropdownMenuItem
-                    key={model.id}
-                    onClick={() => onModelChange(model.id)}
-                    className={`cursor-pointer hover:bg-gray-800 ${
-                      selectedModel === model.id ? 'bg-gray-800 text-purple-400' : ''
-                    }`}
-                  >
-                    {model.name}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+        <div className="bg-black/5 dark:bg-white/5 rounded-2xl p-1.5">
+          <div className="relative flex flex-col">
+            <div 
+              className={cn(
+                "overflow-y-auto transition-colors",
+                isDragOver && "bg-purple-500/10"
+              )}
+              style={{ maxHeight: "300px" }}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+            >
+              <Textarea
+                value={value}
+                placeholder="What can I do for you?"
+                className={cn(
+                  "w-full rounded-xl rounded-b-none px-4 py-3 bg-black/5 dark:bg-white/5 border-none text-white placeholder:text-white/70 resize-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                  "min-h-[72px]"
+                )}
+                ref={textareaRef}
+                onKeyDown={handleKeyDown}
+                onChange={(e) => {
+                  onChange(e.target.value);
+                  adjustHeight();
+                }}
+                disabled={disabled}
+              />
+            </div>
 
-            <Button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              variant="ghost"
-              size="sm"
-              className="text-gray-400 hover:text-white h-8 w-8 p-0"
-              disabled={disabled}
-            >
-              <Paperclip className="w-4 h-4" />
-            </Button>
-            
-            <Button
-              type="submit"
-              size="sm"
-              disabled={disabled || (!value.trim() && !uploadedImage)}
-              className="bg-purple-600 hover:bg-purple-700 h-8 w-8 p-0"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
+            <div className="h-14 bg-black/5 dark:bg-white/5 rounded-b-xl flex items-center">
+              <div className="absolute left-3 right-3 bottom-3 flex items-center justify-between w-[calc(100%-24px)]">
+                <div className="flex items-center gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="flex items-center gap-1 h-8 pl-1 pr-2 text-xs rounded-md text-white hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500"
+                        disabled={disabled}
+                      >
+                        <span className="max-w-32 truncate">{selectedModelName}</span>
+                        <ChevronDown className="w-3 h-3 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white">
+                      {models.map((model) => (
+                        <DropdownMenuItem
+                          key={model.id}
+                          onClick={() => onModelChange(model.id)}
+                          className={`cursor-pointer hover:bg-gray-800 ${
+                            selectedModel === model.id ? 'bg-gray-800 text-purple-400' : ''
+                          }`}
+                        >
+                          {model.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  
+                  <div className="h-4 w-px bg-white/10 mx-0.5" />
+                  
+                  <label
+                    className={cn(
+                      "rounded-lg p-2 bg-black/5 dark:bg-white/5 cursor-pointer",
+                      "hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500",
+                      "text-white/40 hover:text-white"
+                    )}
+                    aria-label="Attach file"
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <Paperclip className="w-4 h-4 transition-colors" />
+                  </label>
+                </div>
+                
+                <button
+                  type="submit"
+                  className={cn(
+                    "rounded-lg p-2 bg-black/5 dark:bg-white/5",
+                    "hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500"
+                  )}
+                  aria-label="Send message"
+                  disabled={disabled || (!value.trim() && !uploadedImage)}
+                >
+                  <ArrowRight
+                    className={cn(
+                      "w-4 h-4 text-white transition-opacity duration-200",
+                      (value.trim() || uploadedImage) ? "opacity-100" : "opacity-30"
+                    )}
+                  />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </form>
-      
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFileChange}
-        className="hidden"
-      />
     </div>
   );
 };
