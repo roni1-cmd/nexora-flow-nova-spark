@@ -86,9 +86,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             {!isCollapsed && (
               <div className="flex items-center space-x-2">
                 <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center">
-                  <MessageSquare className="w-4 h-4 text-white" />
                 </div>
-                <h2 className="text-sm font-medium text-white">nexora</h2>
               </div>
             )}
             
