@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Download, X, ChevronDown, LogOut, User, Settings, Zap, Bot } from 'lucide-react';
+import { Download, X, ChevronDown, LogOut, User, Zap, Bot, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -456,6 +456,15 @@ export const ChatInterface = () => {
     setInput('');
     setUploadedImage(null);
 
+    // Check if it's a Wikipedia search result
+    const isWikipediaResult = contentToSend.startsWith('Wikipedia search results for');
+    
+    if (isWikipediaResult) {
+      // For Wikipedia results, just add the message without API call
+      updateConversation(newMessages);
+      return;
+    }
+
     const isEssayRequest = detectEssayRequest(contentToSend);
     const isReasoningModel = selectedModel === 'qwen-qwq-32b';
 
@@ -696,12 +705,15 @@ export const ChatInterface = () => {
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         user={user}
+        selectedModel={selectedModel}
+        onModelChange={setSelectedModel}
+        models={MODELS}
       />
       
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black border-b border-gray-800">
+        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black">
           <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
             <Button
               onClick={() => setSidebarOpen(true)}
@@ -709,7 +721,7 @@ export const ChatInterface = () => {
               size="sm"
               className="text-white hover:bg-gray-800 lg:hidden"
             >
-              <Settings className="w-4 h-4" />
+              <ArrowLeft className="w-4 h-4" />
             </Button>
             
             <div className="flex items-center space-x-2 md:space-x-3">
@@ -899,9 +911,6 @@ export const ChatInterface = () => {
             onChange={setInput}
             onSendMessage={() => sendMessage()}
             onImageUpload={handleImageUpload}
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-            models={MODELS}
             disabled={isLoading}
             uploadedImage={uploadedImage}
             onRemoveImage={() => setUploadedImage(null)}

@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Plus, Trash2, Calendar, X, Search, Settings, User, History, Star, BookOpen, ChevronRight } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, Calendar, X, Search, ArrowLeft, User, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 interface Conversation {
@@ -23,6 +25,9 @@ interface ConversationSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   user: any;
+  selectedModel: string;
+  onModelChange: (model: string) => void;
+  models: Array<{ id: string; name: string }>;
 }
 
 export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
@@ -35,6 +40,9 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   isOpen,
   onClose,
   user,
+  selectedModel,
+  onModelChange,
+  models,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -67,23 +75,20 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       
       {/* Sidebar */}
       <div className={`
-        fixed left-0 top-0 h-full bg-gray-900 z-50 transform transition-all duration-300 ease-in-out border-r border-gray-800
+        fixed left-0 top-0 h-full bg-black z-50 transform transition-all duration-300 ease-in-out
         lg:relative lg:translate-x-0 lg:z-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        ${isCollapsed ? 'w-16' : 'w-80'}
+        ${isCollapsed ? 'w-12' : 'w-64'}
       `}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-800">
+          <div className="flex items-center justify-between p-3">
             {!isCollapsed && (
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <MessageSquare className="w-5 h-5 text-white" />
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center">
+                  <MessageSquare className="w-4 h-4 text-white" />
                 </div>
-                <div>
-                  <h2 className="text-sm font-medium text-white">nexora</h2>
-                  <p className="text-xs text-gray-400">Enterprise</p>
-                </div>
+                <h2 className="text-sm font-medium text-white">nexora</h2>
               </div>
             )}
             
@@ -92,109 +97,68 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                 onClick={() => setIsCollapsed(!isCollapsed)}
                 variant="ghost"
                 size="sm"
-                className="text-gray-400 hover:text-white h-8 w-8 p-0"
+                className="text-gray-400 hover:text-white h-6 w-6 p-0"
               >
-                <Settings className="w-4 h-4" />
+                <ArrowLeft className={`w-3 h-3 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} />
               </Button>
 
               <Button
                 onClick={onClose}
                 variant="ghost"
                 size="sm"
-                className="lg:hidden text-gray-400 hover:text-white h-8 w-8 p-0"
+                className="lg:hidden text-gray-400 hover:text-white h-6 w-6 p-0"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3 h-3" />
               </Button>
             </div>
           </div>
 
-          {/* Navigation */}
-          <div className="p-3">
-            <div className="space-y-1">
-              <button
-                onClick={onNewConversation}
-                className={cn(
-                  "w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors",
-                  "text-white bg-gray-800 hover:bg-gray-700",
-                  isCollapsed && "justify-center px-2"
-                )}
-              >
-                <Plus className="w-4 h-4 flex-shrink-0" />
-                {!isCollapsed && <span className="text-sm">Playground</span>}
-              </button>
-              
-              <div className="space-y-1 mt-4">
-                <button className={cn(
-                  "w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-gray-300 hover:bg-gray-800",
-                  isCollapsed && "justify-center px-2"
-                )}>
-                  <History className="w-4 h-4 flex-shrink-0" />
-                  {!isCollapsed && <span className="text-sm">History</span>}
-                </button>
-                
-                <button className={cn(
-                  "w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-gray-300 hover:bg-gray-800",
-                  isCollapsed && "justify-center px-2"
-                )}>
-                  <Star className="w-4 h-4 flex-shrink-0" />
-                  {!isCollapsed && <span className="text-sm">Starred</span>}
-                </button>
-                
-                <button className={cn(
-                  "w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-gray-300 hover:bg-gray-800",
-                  isCollapsed && "justify-center px-2"
-                )}>
-                  <Settings className="w-4 h-4 flex-shrink-0" />
-                  {!isCollapsed && <span className="text-sm">Settings</span>}
-                </button>
-              </div>
+          {/* Model Selector */}
+          {!isCollapsed && (
+            <div className="px-3 pb-3">
+              <Select value={selectedModel} onValueChange={onModelChange}>
+                <SelectTrigger className="w-full bg-gray-900 border-gray-800 text-white text-xs h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border-gray-700 text-white">
+                  {models.map((model) => (
+                    <SelectItem key={model.id} value={model.id} className="text-xs hover:bg-gray-800">
+                      {model.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+          )}
+
+          {/* New Conversation Button */}
+          <div className="px-3 pb-3">
+            <button
+              onClick={onNewConversation}
+              className={cn(
+                "w-full flex items-center space-x-2 px-2 py-2 rounded-lg text-left transition-colors",
+                "text-white bg-gray-800 hover:bg-gray-700 text-sm",
+                isCollapsed && "justify-center px-2"
+              )}
+            >
+              <Plus className="w-4 h-4 flex-shrink-0" />
+              {!isCollapsed && <span>New Chat</span>}
+            </button>
           </div>
 
-          {/* Navigation Sections */}
+          {/* Search */}
           {!isCollapsed && (
-            <>
-              <div className="px-3 py-2">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between px-3 py-1">
-                    <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Platform</span>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-gray-300 hover:bg-gray-800">
-                      <MessageSquare className="w-4 h-4" />
-                      <span className="text-sm">Models</span>
-                      <ChevronRight className="w-4 h-4 ml-auto" />
-                    </button>
-                    
-                    <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-gray-300 hover:bg-gray-800">
-                      <BookOpen className="w-4 h-4" />
-                      <span className="text-sm">Documentation</span>
-                      <ChevronRight className="w-4 h-4 ml-auto" />
-                    </button>
-                    
-                    <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-gray-300 hover:bg-gray-800">
-                      <Settings className="w-4 h-4" />
-                      <span className="text-sm">Settings</span>
-                      <ChevronRight className="w-4 h-4 ml-auto" />
-                    </button>
-                  </div>
-                </div>
+            <div className="px-3 pb-3">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-400" />
+                <Input
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-7 bg-gray-900 border-gray-800 text-white placeholder-gray-400 h-8 text-xs"
+                />
               </div>
-
-              {/* Search */}
-              <div className="px-3 pb-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input
-                    placeholder="Search conversations..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-gray-800 border-gray-700 text-white placeholder-gray-400 h-9"
-                  />
-                </div>
-              </div>
-            </>
+            </div>
           )}
 
           {/* Conversations List */}
@@ -202,17 +166,16 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             <div className="space-y-1">
               {filteredConversations.length === 0 ? (
                 !isCollapsed && (
-                  <div className="text-center text-gray-500 py-12">
-                    <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-sm">No conversations yet</p>
-                    <p className="text-xs text-gray-600 mt-1">Start a new conversation to begin</p>
+                  <div className="text-center text-gray-500 py-8">
+                    <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-50" />
+                    <p className="text-xs">No conversations yet</p>
                   </div>
                 )
               ) : (
                 filteredConversations.map((conversation) => (
                   <div
                     key={conversation.id}
-                    className={`group relative p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                    className={`group relative p-2 rounded-lg cursor-pointer transition-all duration-200 ${
                       currentConversationId === conversation.id
                         ? 'bg-gray-800'
                         : 'hover:bg-gray-800/50'
@@ -224,25 +187,21 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                   >
                     {isCollapsed ? (
                       <div className="flex justify-center">
-                        <MessageSquare className="w-5 h-5 text-gray-400" />
+                        <MessageSquare className="w-4 h-4 text-gray-400" />
                       </div>
                     ) : (
                       <>
                         <div className="flex items-start justify-between">
                           <div className="flex-1 min-w-0 pr-2">
-                            <h3 className="font-medium text-sm text-white truncate mb-1">
+                            <h3 className="font-medium text-xs text-white truncate mb-1">
                               {conversation.title}
                             </h3>
-                            <p className="text-xs text-gray-400 truncate mb-2">
+                            <p className="text-xs text-gray-400 truncate mb-1">
                               {conversation.lastMessage}
                             </p>
-                            <div className="flex items-center gap-3 text-xs text-gray-500">
-                              <div className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
-                                {formatDate(conversation.timestamp)}
-                              </div>
-                              <span>•</span>
-                              <span>{conversation.messageCount} messages</span>
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <Calendar className="w-2 h-2" />
+                              {formatDate(conversation.timestamp)}
                             </div>
                           </div>
                           
@@ -253,15 +212,15 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                               e.stopPropagation();
                               onDeleteConversation(conversation.id);
                             }}
-                            className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-opacity"
+                            className="opacity-0 group-hover:opacity-100 h-5 w-5 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-opacity"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="w-2 h-2" />
                           </Button>
                         </div>
                         
                         {/* Active indicator */}
                         {currentConversationId === conversation.id && (
-                          <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-blue-500 rounded-r-full" />
+                          <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-0.5 h-6 bg-blue-500 rounded-r-full" />
                         )}
                       </>
                     )}
@@ -276,16 +235,16 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             <button
               onClick={onShowProfile}
               className={cn(
-                "w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors text-gray-300 hover:bg-gray-800",
+                "w-full flex items-center space-x-2 px-2 py-2 rounded-lg text-left transition-colors text-gray-300 hover:bg-gray-800",
                 isCollapsed && "justify-center px-2"
               )}
             >
-              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                <User className="w-4 h-4 text-white" />
+              <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <User className="w-3 h-3 text-white" />
               </div>
               {!isCollapsed && (
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{user?.displayName || 'User'}</p>
+                  <p className="text-xs font-medium text-white truncate">{user?.displayName || 'User'}</p>
                   <p className="text-xs text-gray-400 truncate">{user?.email || 'm@example.com'}</p>
                 </div>
               )}
