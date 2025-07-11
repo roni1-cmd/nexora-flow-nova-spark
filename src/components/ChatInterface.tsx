@@ -19,6 +19,8 @@ import CustomLoader from './CustomLoader';
 import ConfirmDialog from './ConfirmDialog';
 import EssayLoader from './EssayLoader';
 import { motion } from 'framer-motion';
+import { ImageModal } from './ImageModal';
+import { formatMarkdown } from '@/lib/formatMarkdown';
 
 interface Message {
   id: string;
@@ -723,7 +725,7 @@ export const ChatInterface = () => {
                         />
                         
                         {message.isCode ? (
-                          <EssayCanvas code={message.content} />
+                          <EssayCanvas content={message.content} />
                         ) : message.isEssay ? (
                           <div className="bg-gray-900 rounded-lg p-3 md:p-4 my-3 border border-gray-700">
                             <div className="flex items-center justify-between mb-3">
