@@ -1,10 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
-import { MessageSquare, Plus, Trash2, Calendar, X, Search, ArrowLeft, User, ChevronDown } from 'lucide-react';
+import React, { useState } from 'react';
+import { MessageSquare, Plus, Trash2, Calendar, X, Search, ArrowLeft, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 interface Conversation {
@@ -25,9 +24,6 @@ interface ConversationSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   user: any;
-  selectedModel: string;
-  onModelChange: (model: string) => void;
-  models: Array<{ id: string; name: string }>;
 }
 
 export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
@@ -40,9 +36,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   isOpen,
   onClose,
   user,
-  selectedModel,
-  onModelChange,
-  models,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -78,20 +71,11 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         fixed left-0 top-0 h-full bg-black z-50 transform transition-all duration-300 ease-in-out
         lg:relative lg:translate-x-0 lg:z-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        ${isCollapsed ? 'w-12' : 'w-64'}
+        ${isCollapsed ? 'w-12' : 'w-60'}
       `}>
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-3">
-            {!isCollapsed && (
-              <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center">
-                  <MessageSquare className="w-4 h-4 text-white" />
-                </div>
-                <h2 className="text-sm font-medium text-white">nexora</h2>
-              </div>
-            )}
-            
             <div className="flex items-center space-x-1">
               <Button
                 onClick={() => setIsCollapsed(!isCollapsed)}
@@ -113,38 +97,18 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             </div>
           </div>
 
-          {/* Model Selector */}
+          {/* New Chat Button */}
           {!isCollapsed && (
             <div className="px-3 pb-3">
-              <Select value={selectedModel} onValueChange={onModelChange}>
-                <SelectTrigger className="w-full bg-gray-900 border-gray-800 text-white text-xs h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-900 border-gray-700 text-white">
-                  {models.map((model) => (
-                    <SelectItem key={model.id} value={model.id} className="text-xs hover:bg-gray-800">
-                      {model.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <button
+                onClick={onNewConversation}
+                className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-left transition-colors text-white bg-gray-800 hover:bg-gray-700 text-sm"
+              >
+                <Plus className="w-4 h-4 flex-shrink-0" />
+                <span>New chat</span>
+              </button>
             </div>
           )}
-
-          {/* New Conversation Button */}
-          <div className="px-3 pb-3">
-            <button
-              onClick={onNewConversation}
-              className={cn(
-                "w-full flex items-center space-x-2 px-2 py-2 rounded-lg text-left transition-colors",
-                "text-white bg-gray-800 hover:bg-gray-700 text-sm",
-                isCollapsed && "justify-center px-2"
-              )}
-            >
-              <Plus className="w-4 h-4 flex-shrink-0" />
-              {!isCollapsed && <span>New Chat</span>}
-            </button>
-          </div>
 
           {/* Search */}
           {!isCollapsed && (
@@ -152,12 +116,19 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-400" />
                 <Input
-                  placeholder="Search..."
+                  placeholder="Search chats"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-7 bg-gray-900 border-gray-800 text-white placeholder-gray-400 h-8 text-xs"
+                  className="pl-7 bg-gray-900 border-none text-white placeholder-gray-400 h-8 text-xs"
                 />
               </div>
+            </div>
+          )}
+
+          {/* Conversations Section */}
+          {!isCollapsed && (
+            <div className="px-3 pb-2">
+              <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide">Chats</h3>
             </div>
           )}
 
@@ -196,13 +167,9 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                             <h3 className="font-medium text-xs text-white truncate mb-1">
                               {conversation.title}
                             </h3>
-                            <p className="text-xs text-gray-400 truncate mb-1">
+                            <p className="text-xs text-gray-400 truncate">
                               {conversation.lastMessage}
                             </p>
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                              <Calendar className="w-2 h-2" />
-                              {formatDate(conversation.timestamp)}
-                            </div>
                           </div>
                           
                           <Button
@@ -230,8 +197,8 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             </div>
           </ScrollArea>
 
-          {/* User Profile */}
-          <div className="p-3 border-t border-gray-800">
+          {/* User Profile at bottom */}
+          <div className="p-3 mt-auto">
             <button
               onClick={onShowProfile}
               className={cn(
@@ -245,7 +212,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               {!isCollapsed && (
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-white truncate">{user?.displayName || 'User'}</p>
-                  <p className="text-xs text-gray-400 truncate">{user?.email || 'm@example.com'}</p>
                 </div>
               )}
             </button>
