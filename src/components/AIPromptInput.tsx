@@ -1,12 +1,13 @@
 
 import React, { useRef, useState } from 'react';
-import { Send, Paperclip, X, Search } from 'lucide-react';
+import { Send, Paperclip, X, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { motion, AnimatePresence } from 'framer-motion';
 import WikipediaLoader from './WikipediaLoader';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import { useAutoResizeTextarea } from '@/hooks/use-auto-resize-textarea';
 
 interface AIPromptInputProps {
   value: string;
@@ -28,15 +29,22 @@ const AIPromptInput = ({
   onRemoveImage
 }: AIPromptInputProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [showSearch, setShowSearch] = useState(true);
+  const [isFocused, setIsFocused] = useState(false);
   const { toast } = useToast();
+  
+  const { textareaRef, adjustHeight } = useAutoResizeTextarea({
+    minHeight: 52,
+    maxHeight: 200,
+  });
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (value.trim() && !disabled) {
         onSendMessage();
+        adjustHeight(true);
       }
     }
   };
@@ -46,7 +54,6 @@ const AIPromptInput = ({
     if (file && file.type.startsWith('image/')) {
       onImageUpload(file);
     }
-    // Reset the input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -103,13 +110,19 @@ const AIPromptInput = ({
     }
   };
 
-  // Auto-resize textarea
-  React.useEffect(() => {
+  const handleContainerClick = () => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
+      textareaRef.current.focus();
     }
-  }, [value]);
+  };
+
+  const handleFocus = () => {
+    setIsFocused(true);
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+  };
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -140,56 +153,138 @@ const AIPromptInput = ({
         )}
       </AnimatePresence>
 
-      <div className="relative">
-        <div className="flex items-end gap-2 p-3 bg-gray-900 rounded-2xl border border-gray-700 focus-within:border-purple-500 transition-colors">
-          <Textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={handleKeyPress}
-            placeholder="Message nexora..."
-            disabled={disabled}
-            className="flex-1 min-h-[20px] max-h-[120px] bg-transparent border-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 text-white placeholder-gray-400 text-sm leading-relaxed"
-            style={{ height: 'auto' }}
-          />
-          
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-gray-800"
+      <div className="relative max-w-xl w-full mx-auto">
+        <div
+          role="textbox"
+          tabIndex={0}
+          aria-label="Message input container"
+          className={cn(
+            "relative flex flex-col rounded-xl transition-all duration-200 w-full text-left cursor-text",
+            "ring-1 ring-white/10",
+            isFocused && "ring-white/20"
+          )}
+          onClick={handleContainerClick}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              handleContainerClick();
+            }
+          }}
+        >
+          <div className="overflow-y-auto max-h-[200px]">
+            <Textarea
+              value={value}
+              placeholder="Message nexora..."
+              className="w-full rounded-xl rounded-b-none px-4 py-3 bg-white/5 border-none text-white placeholder:text-white/70 resize-none focus-visible:ring-0 leading-[1.2]"
+              ref={textareaRef}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              onKeyDown={handleKeyPress}
+              onChange={(e) => {
+                onChange(e.target.value);
+                adjustHeight();
+              }}
               disabled={disabled}
-            >
-              <Paperclip className="h-4 w-4" />
-            </Button>
+            />
+          </div>
 
-            <Button
-              type="button"
-              onClick={handleWikipediaSearch}
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-gray-800"
-              disabled={disabled || isSearching || !value.trim()}
-            >
-              {isSearching ? (
-                <div className="w-4 h-4">
-                  <WikipediaLoader />
+          <div className="h-12 bg-white/5 rounded-b-xl">
+            <div className="absolute left-3 bottom-3 flex items-center gap-2">
+              <label className="cursor-pointer rounded-lg p-2 bg-white/5">
+                <input 
+                  ref={fileInputRef}
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden" 
+                  disabled={disabled}
+                />
+                <Paperclip className="w-4 h-4 text-white/40 hover:text-white transition-colors" />
+              </label>
+              
+              <button
+                type="button"
+                onClick={() => setShowSearch(!showSearch)}
+                className={cn(
+                  "rounded-full transition-all flex items-center gap-2 px-1.5 py-1 border h-8 cursor-pointer",
+                  showSearch
+                    ? "bg-purple-500/15 border-purple-400 text-purple-400"
+                    : "bg-white/5 border-transparent text-white/40 hover:text-white"
+                )}
+                disabled={disabled}
+              >
+                <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                  <motion.div
+                    animate={{
+                      rotate: showSearch ? 180 : 0,
+                      scale: showSearch ? 1.1 : 1,
+                    }}
+                    whileHover={{
+                      rotate: showSearch ? 180 : 15,
+                      scale: 1.1,
+                      transition: {
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 10,
+                      },
+                    }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 260,
+                      damping: 25,
+                    }}
+                  >
+                    {isSearching ? (
+                      <div className="w-4 h-4">
+                        <WikipediaLoader />
+                      </div>
+                    ) : (
+                      <Globe
+                        className={cn(
+                          "w-4 h-4",
+                          showSearch ? "text-purple-400" : "text-inherit"
+                        )}
+                      />
+                    )}
+                  </motion.div>
                 </div>
-              ) : (
-                <Search className="h-4 w-4" />
-              )}
-            </Button>
+                <AnimatePresence>
+                  {showSearch && (
+                    <motion.span
+                      initial={{ width: 0, opacity: 0 }}
+                      animate={{ width: "auto", opacity: 1 }}
+                      exit={{ width: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-sm overflow-hidden whitespace-nowrap text-purple-400 shrink-0"
+                    >
+                      Search
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </button>
+            </div>
             
-            <Button
-              onClick={onSendMessage}
-              disabled={disabled || !value.trim()}
-              size="sm"
-              className="h-8 w-8 p-0 bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+            <div className="absolute right-3 bottom-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (showSearch && value.trim()) {
+                    handleWikipediaSearch();
+                  } else {
+                    onSendMessage();
+                    adjustHeight(true);
+                  }
+                }}
+                disabled={disabled || !value.trim()}
+                className={cn(
+                  "rounded-lg p-2 transition-colors",
+                  value.trim()
+                    ? "bg-purple-500/15 text-purple-400"
+                    : "bg-white/5 text-white/40 cursor-not-allowed"
+                )}
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
