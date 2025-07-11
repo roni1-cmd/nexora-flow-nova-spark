@@ -1,13 +1,12 @@
 
 import { useRef, useCallback } from 'react';
 
-interface UseAutoResizeTextareaOptions {
-  minHeight?: number;
-  maxHeight?: number;
+interface UseAutoResizeTextareaProps {
+  minHeight: number;
+  maxHeight: number;
 }
 
-export function useAutoResizeTextarea(options: UseAutoResizeTextareaOptions = {}) {
-  const { minHeight = 52, maxHeight = 200 } = options;
+export function useAutoResizeTextarea({ minHeight, maxHeight }: UseAutoResizeTextareaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const adjustHeight = useCallback((reset = false) => {
@@ -25,8 +24,5 @@ export function useAutoResizeTextarea(options: UseAutoResizeTextareaOptions = {}
     textarea.style.height = `${newHeight}px`;
   }, [minHeight, maxHeight]);
 
-  return {
-    textareaRef,
-    adjustHeight,
-  };
+  return { textareaRef, adjustHeight };
 }
