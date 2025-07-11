@@ -157,7 +157,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
           <div className="overflow-y-auto max-h-[200px]">
             <Textarea
               value={value}
-              placeholder={showSearch ? "Search Wikipedia..." : "Message nexora..."}
+              placeholder={showSearch ? "Search the web..." : "Ask nexora anything..."}
               className="w-full rounded-xl rounded-b-none px-4 py-3 bg-white/5 border-none text-white placeholder:text-white/70 resize-none focus-visible:ring-0 leading-[1.2]"
               ref={textareaRef}
               onFocus={handleFocus}
