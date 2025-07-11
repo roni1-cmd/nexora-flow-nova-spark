@@ -176,6 +176,8 @@ export const ChatInterface = () => {
     type: 'message' | 'conversation';
   }>({ isOpen: false, type: 'message' });
 
+  const currentConversationKey = `nexora-current-conversation-${user?.email || 'anonymous'}`;
+
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     
@@ -323,11 +325,31 @@ export const ChatInterface = () => {
     }));
   };
 
+  useEffect(() => {
+    if (user) {
+      const savedCurrentId = localStorage.getItem(currentConversationKey);
+      if (savedCurrentId && conversations.length > 0) {
+        const conversation = conversations.find(c => c.id === savedCurrentId);
+        if (conversation) {
+          setCurrentConversationId(savedCurrentId);
+          setMessages(conversation.messages);
+        }
+      }
+    }
+  }, [user, conversations]);
+
+  useEffect(() => {
+    if (currentConversationId && user) {
+      localStorage.setItem(currentConversationKey, currentConversationId);
+    }
+  }, [currentConversationId, user]);
+
   const loadConversation = (conversationId: string) => {
     const conversation = conversations.find(c => c.id === conversationId);
     if (conversation) {
       setCurrentConversationId(conversationId);
       setMessages(conversation.messages);
+      setSidebarOpen(false);
     }
   };
 
@@ -627,6 +649,26 @@ export const ChatInterface = () => {
               />
               <span className="text-lg md:text-xl font-medium text-white hidden sm:block">nexora</span>
             </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center space-x-2 hover:bg-gray-800 text-sm">
+                  <span className="text-gray-300">{MODELS.find(m => m.id === selectedModel)?.name}</span>
+                  <ChevronDown className="w-3 h-3 text-gray-400" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white z-50" align="start">
+                {MODELS.map((model) => (
+                  <DropdownMenuItem
+                    key={model.id}
+                    onClick={() => setSelectedModel(model.id)}
+                    className={`hover:bg-gray-800 ${selectedModel === model.id ? 'bg-gray-800' : ''}`}
+                  >
+                    {model.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <div className="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
@@ -685,7 +727,7 @@ export const ChatInterface = () => {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col overflow-hidden relative">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {messages.length === 0 ? (
             <div className="flex-1 flex items-center justify-center px-4">
               <div className="text-center">
@@ -695,7 +737,7 @@ export const ChatInterface = () => {
               </div>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide" ref={scrollAreaRef}>
+            <div className="flex-1 overflow-y-auto px-2 md:px-4" ref={scrollAreaRef}>
               <div className="max-w-3xl mx-auto py-4 space-y-4 md:space-y-6">
                 {messages.map((message) => (
                   <div key={message.id} className="group">
@@ -793,12 +835,23 @@ export const ChatInterface = () => {
                   </div>
                 )}
                 {isGeneratingEssay && (
-                  <div className="flex justify-center py-8">
-                    <EssayLoader />
+                  <div className="flex justify-start mb-2">
+                    <motion.div 
+                      className="max-w-[95%] md:max-w-2xl"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
+                    >
+                      <div className="flex flex-col items-start">
+                        <div className="transform scale-50 origin-left">
+                          <EssayLoader />
+                        </div>
+                        <p className="text-sm text-gray-400 ml-2 -mt-8">We're generating your essay, please wait...</p>
+                      </div>
+                    </motion.div>
                   </div>
                 )}
               </div>
-              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none"></div>
             </div>
           )}
         </div>
@@ -812,9 +865,6 @@ export const ChatInterface = () => {
             disabled={isLoading || isGeneratingEssay}
             uploadedImage={uploadedImage}
             onRemoveImage={() => setUploadedImage(null)}
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-            models={MODELS}
           />
         </div>
       </div>
