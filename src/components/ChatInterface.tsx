@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Download, X, ChevronDown, LogOut, User, Settings, Zap } from 'lucide-react';
+import { Download, X, ChevronDown, LogOut, User, Settings, Zap, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -73,12 +73,10 @@ const auth = getAuth(app);
 
 const TypingAnimation = () => (
   <div className="flex items-center space-x-3 p-3">
-    <AnimatedLoader />
-    <div className="flex space-x-1">
-      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+    <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+      <Bot className="w-4 h-4 text-white" />
     </div>
+    <span className="text-gray-400 text-sm">Thinking...</span>
   </div>
 );
 
@@ -96,7 +94,15 @@ const TypewriterText = ({ text }: { text: string }) => {
     }
   }, [currentIndex, text]);
 
-  return <span>{displayedText}</span>;
+  return (
+    <motion.span
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      {displayedText}
+    </motion.span>
+  );
 };
 
 const formatMarkdown = (text: string) => {
@@ -685,14 +691,16 @@ export const ChatInterface = () => {
         onSelectConversation={loadConversation}
         onNewConversation={createNewConversation}
         onDeleteConversation={handleDeleteConversation}
+        onShowProfile={() => setShowProfile(true)}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        user={user}
       />
       
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black">
+        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black border-b border-gray-800">
           <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
             <Button
               onClick={() => setSidebarOpen(true)}
@@ -798,7 +806,12 @@ export const ChatInterface = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="max-w-[95%] md:max-w-2xl mb-2">
+                      <motion.div 
+                        className="max-w-[95%] md:max-w-2xl mb-2"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                      >
                         <ReasoningView 
                           reasoning={message.reasoning || ''} 
                           isVisible={selectedModel === 'qwen-qwq-32b' && !!message.reasoning}
@@ -846,7 +859,7 @@ export const ChatInterface = () => {
                             )}
                           </>
                         )}
-                      </div>
+                      </motion.div>
                     )}
                     
                     <MessageActions

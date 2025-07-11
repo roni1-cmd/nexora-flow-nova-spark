@@ -1,19 +1,10 @@
 
 "use client";
 
-/**
- * @author: @kokonutui
- * @description: AI Prompt Input
- * @version: 1.0.0
- * @date: 2025-06-26
- * @license: MIT
- * @website: https://kokonutui.com
- * @github: https://github.com/kokonut-labs/kokonutui
- */
-
-import { ArrowRight, Bot, Check, ChevronDown, Paperclip } from "lucide-react";
+import { Globe, Paperclip, Send, ChevronDown, Check, Bot } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
 import { Button } from "@/components/ui/button";
@@ -23,7 +14,6 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { motion, AnimatePresence } from "framer-motion";
 
 const OPENAI_SVG = (
     <div>
@@ -83,9 +73,11 @@ export default function AIPromptInput({
   onRemoveImage
 }: AIPromptInputProps) {
     const { textareaRef, adjustHeight } = useAutoResizeTextarea({
-        minHeight: 72,
-        maxHeight: 300,
+        minHeight: 52,
+        maxHeight: 200,
     });
+    const [showSearch, setShowSearch] = useState(true);
+    const [isFocused, setIsFocused] = useState(false);
 
     const MODEL_ICONS: Record<string, React.ReactNode> = {
         "gemma2-9b-it": (
@@ -127,11 +119,22 @@ export default function AIPromptInput({
         return model ? model.name : modelId;
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            onSendMessage();
-            adjustHeight(true);
+    const handleSubmit = () => {
+        onSendMessage();
+        adjustHeight(true); 
+    };
+
+    const handleFocus = () => {
+        setIsFocused(true);
+    };
+
+    const handleBlur = () => {
+        setIsFocused(false);
+    };
+
+    const handleContainerClick = () => {
+        if (textareaRef.current) {
+            textareaRef.current.focus();
         }
     };
 
@@ -143,154 +146,214 @@ export default function AIPromptInput({
     };
 
     return (
-        <div className="w-full max-w-4xl mx-auto py-4">
-            <div className="bg-gray-900 border border-gray-700 rounded-2xl p-1.5 pt-4">
-                <div className="relative">
-                    <div className="relative flex flex-col">
-                        {uploadedImage && (
-                            <div className="px-4 pb-2">
-                                <div className="relative inline-block">
-                                    <img 
-                                        src={uploadedImage} 
-                                        alt="Uploaded" 
-                                        className="max-w-32 max-h-32 rounded-lg"
-                                    />
-                                    {onRemoveImage && (
-                                        <button
-                                            onClick={onRemoveImage}
-                                            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
-                                        >
-                                            ×
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                        
-                        <div
-                            className="overflow-y-auto"
-                            style={{ maxHeight: "400px" }}
-                        >
-                            <Textarea
-                                id="ai-input-15"
-                                value={value}
-                                placeholder={"What can I do for you?"}
-                                className={cn(
-                                    "w-full rounded-xl rounded-b-none px-4 py-3 bg-gray-800 border-none text-white placeholder:text-gray-400 resize-none focus-visible:ring-0 focus-visible:ring-offset-0",
-                                    "min-h-[72px]"
-                                )}
-                                ref={textareaRef}
-                                onKeyDown={handleKeyDown}
-                                onChange={(e) => {
-                                    onChange(e.target.value);
-                                    adjustHeight();
-                                }}
-                                disabled={disabled}
+        <div className="w-full py-4">
+            <div className="relative max-w-4xl w-full mx-auto">
+                {uploadedImage && (
+                    <div className="mb-4">
+                        <div className="relative inline-block">
+                            <img 
+                                src={uploadedImage} 
+                                alt="Uploaded" 
+                                className="max-w-32 max-h-32 rounded-lg"
                             />
-                        </div>
-
-                        <div className="h-14 bg-gray-800 rounded-b-xl flex items-center">
-                            <div className="absolute left-3 right-3 bottom-3 flex items-center justify-between w-[calc(100%-24px)]">
-                                <div className="flex items-center gap-2">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                className="flex items-center gap-1 h-8 pl-1 pr-2 text-xs rounded-md text-white hover:bg-gray-700 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500"
-                                                disabled={disabled}
-                                            >
-                                                <AnimatePresence mode="wait">
-                                                    <motion.div
-                                                        key={selectedModel}
-                                                        initial={{
-                                                            opacity: 0,
-                                                            y: -5,
-                                                        }}
-                                                        animate={{
-                                                            opacity: 1,
-                                                            y: 0,
-                                                        }}
-                                                        exit={{
-                                                            opacity: 0,
-                                                            y: 5,
-                                                        }}
-                                                        transition={{
-                                                            duration: 0.15,
-                                                        }}
-                                                        className="flex items-center gap-1"
-                                                    >
-                                                        {MODEL_ICONS[selectedModel] || <Bot className="w-4 h-4 opacity-50" />}
-                                                        {getModelDisplayName(selectedModel)}
-                                                        <ChevronDown className="w-3 h-3 opacity-50" />
-                                                    </motion.div>
-                                                </AnimatePresence>
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent
-                                            className={cn(
-                                                "min-w-[10rem]",
-                                                "border-gray-700",
-                                                "bg-gray-900"
-                                            )}
-                                        >
-                                            {models.map((model) => (
-                                                <DropdownMenuItem
-                                                    key={model.id}
-                                                    onSelect={() => onModelChange(model.id)}
-                                                    className="flex items-center justify-between gap-2 text-white hover:bg-gray-800"
-                                                >
-                                                    <div className="flex items-center gap-2">
-                                                        {MODEL_ICONS[model.id] || <Bot className="w-4 h-4 opacity-50" />}
-                                                        <span>{model.name}</span>
-                                                    </div>
-                                                    {selectedModel === model.id && (
-                                                        <Check className="w-4 h-4 text-blue-500" />
-                                                    )}
-                                                </DropdownMenuItem>
-                                            ))}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                    <div className="h-4 w-px bg-gray-600 mx-0.5" />
-                                    <label
-                                        className={cn(
-                                            "rounded-lg p-2 bg-gray-700 cursor-pointer",
-                                            "hover:bg-gray-600 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500",
-                                            "text-gray-400 hover:text-white",
-                                            disabled && "opacity-50 cursor-not-allowed"
-                                        )}
-                                        aria-label="Attach file"
-                                    >
-                                        <input 
-                                            type="file" 
-                                            className="hidden" 
-                                            accept="image/*"
-                                            onChange={handleFileUpload}
-                                            disabled={disabled}
-                                        />
-                                        <Paperclip className="w-4 h-4 transition-colors" />
-                                    </label>
-                                </div>
+                            {onRemoveImage && (
                                 <button
-                                    type="button"
-                                    className={cn(
-                                        "rounded-lg p-2 bg-gray-700",
-                                        "hover:bg-gray-600 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500",
-                                        disabled && "opacity-50 cursor-not-allowed"
-                                    )}
-                                    aria-label="Send message"
-                                    disabled={!value.trim() || disabled}
-                                    onClick={onSendMessage}
+                                    onClick={onRemoveImage}
+                                    className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
                                 >
-                                    <ArrowRight
-                                        className={cn(
-                                            "w-4 h-4 text-white transition-opacity duration-200",
-                                            value.trim() && !disabled
-                                                ? "opacity-100"
-                                                : "opacity-30"
-                                        )}
-                                    />
+                                    ×
                                 </button>
-                            </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+                
+                <div
+                    role="textbox"
+                    tabIndex={0}
+                    aria-label="Search input container"
+                    className={cn(
+                        "relative flex flex-col rounded-xl transition-all duration-200 w-full text-left cursor-text",
+                        "ring-1 ring-black/10 dark:ring-white/10",
+                        isFocused && "ring-black/20 dark:ring-white/20"
+                    )}
+                    onClick={handleContainerClick}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                            handleContainerClick();
+                        }
+                    }}
+                >
+                    <div className="overflow-y-auto max-h-[200px]">
+                        <Textarea
+                            id="ai-input-04"
+                            value={value}
+                            placeholder="What can I do for you?"
+                            className="w-full rounded-xl rounded-b-none px-4 py-3 bg-black/5 dark:bg-white/5 border-none dark:text-white placeholder:text-black/70 dark:placeholder:text-white/70 resize-none focus-visible:ring-0 leading-[1.2]"
+                            ref={textareaRef}
+                            onFocus={handleFocus}
+                            onBlur={handleBlur}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSubmit();
+                                }
+                            }}
+                            onChange={(e) => {
+                                onChange(e.target.value);
+                                adjustHeight();
+                            }}
+                            disabled={disabled}
+                        />
+                    </div>
+
+                    <div className="h-12 bg-black/5 dark:bg-white/5 rounded-b-xl">
+                        <div className="absolute left-3 bottom-3 flex items-center gap-2">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        className="flex items-center gap-1 h-8 pl-1 pr-2 text-xs rounded-md dark:text-white hover:bg-black/10 dark:hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500"
+                                        disabled={disabled}
+                                    >
+                                        <AnimatePresence mode="wait">
+                                            <motion.div
+                                                key={selectedModel}
+                                                initial={{
+                                                    opacity: 0,
+                                                    y: -5,
+                                                }}
+                                                animate={{
+                                                    opacity: 1,
+                                                    y: 0,
+                                                }}
+                                                exit={{
+                                                    opacity: 0,
+                                                    y: 5,
+                                                }}
+                                                transition={{
+                                                    duration: 0.15,
+                                                }}
+                                                className="flex items-center gap-1"
+                                            >
+                                                {MODEL_ICONS[selectedModel] || <Bot className="w-4 h-4 opacity-50" />}
+                                                {getModelDisplayName(selectedModel)}
+                                                <ChevronDown className="w-3 h-3 opacity-50" />
+                                            </motion.div>
+                                        </AnimatePresence>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    className={cn(
+                                        "min-w-[12rem]",
+                                        "border-black/10 dark:border-white/10",
+                                        "bg-white dark:bg-black"
+                                    )}
+                                >
+                                    {models.map((model) => (
+                                        <DropdownMenuItem
+                                            key={model.id}
+                                            onSelect={() => onModelChange(model.id)}
+                                            className="flex items-center justify-between gap-2 dark:text-white hover:bg-black/5 dark:hover:bg-white/5"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {MODEL_ICONS[model.id] || <Bot className="w-4 h-4 opacity-50" />}
+                                                <span>{model.name}</span>
+                                            </div>
+                                            {selectedModel === model.id && (
+                                                <Check className="w-4 h-4 text-blue-500" />
+                                            )}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            
+                            <label className="cursor-pointer rounded-lg p-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10">
+                                <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    accept="image/*"
+                                    onChange={handleFileUpload}
+                                    disabled={disabled}
+                                />
+                                <Paperclip className="w-4 h-4 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white transition-colors" />
+                            </label>
+                            
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowSearch(!showSearch);
+                                }}
+                                className={cn(
+                                    "rounded-full transition-all flex items-center gap-2 px-1.5 py-1 border h-8 cursor-pointer",
+                                    showSearch
+                                        ? "bg-sky-500/15 border-sky-400 text-sky-500"
+                                        : "bg-black/5 dark:bg-white/5 border-transparent text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white "
+                                )}
+                            >
+                                <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                                    <motion.div
+                                        animate={{
+                                            rotate: showSearch ? 180 : 0,
+                                            scale: showSearch ? 1.1 : 1,
+                                        }}
+                                        whileHover={{
+                                            rotate: showSearch ? 180 : 15,
+                                            scale: 1.1,
+                                            transition: {
+                                                type: "spring",
+                                                stiffness: 300,
+                                                damping: 10,
+                                            },
+                                        }}
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 260,
+                                            damping: 25,
+                                        }}
+                                    >
+                                        <Globe
+                                            className={cn(
+                                                "w-4 h-4",
+                                                showSearch
+                                                    ? "text-sky-500"
+                                                    : "text-inherit"
+                                            )}
+                                        />
+                                    </motion.div>
+                                </div>
+                                <AnimatePresence>
+                                    {showSearch && (
+                                        <motion.span
+                                            initial={{ width: 0, opacity: 0 }}
+                                            animate={{
+                                                width: "auto",
+                                                opacity: 1,
+                                            }}
+                                            exit={{ width: 0, opacity: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="text-sm overflow-hidden whitespace-nowrap text-sky-500 shrink-0"
+                                        >
+                                            Search
+                                        </motion.span>
+                                    )}
+                                </AnimatePresence>
+                            </button>
+                        </div>
+                        <div className="absolute right-3 bottom-3">
+                            <button
+                                type="button"
+                                onClick={handleSubmit}
+                                disabled={!value.trim() || disabled}
+                                className={cn(
+                                    "rounded-lg p-2 transition-colors",
+                                    value.trim() && !disabled
+                                        ? "bg-sky-500/15 text-sky-500"
+                                        : "bg-black/5 dark:bg-white/5 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white cursor-pointer"
+                                )}
+                            >
+                                <Send className="w-4 h-4" />
+                            </button>
                         </div>
                     </div>
                 </div>
