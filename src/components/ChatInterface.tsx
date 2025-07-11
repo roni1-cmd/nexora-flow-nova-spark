@@ -15,12 +15,11 @@ import { MessageActions } from './MessageActions';
 import { ConversationSidebar } from './ConversationSidebar';
 import { useUsageTracking } from '@/hooks/useUsageTracking';
 import AIPromptInput from './AIPromptInput';
+import AITextLoading from './AITextLoading';
 import CustomLoader from './CustomLoader';
 import ConfirmDialog from './ConfirmDialog';
-import EssayLoader from './EssayLoader';
+import AnimatedLoader from './AnimatedLoader';
 import { motion } from 'framer-motion';
-import { ImageModal } from './ImageModal';
-import { formatMarkdown } from '@/lib/formatMarkdown';
 
 interface Message {
   id: string;
@@ -58,6 +57,7 @@ const MODELS = [
 
 const API_KEY = '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';
 
+// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCB1DwFSwQLDOlUFtWQtUvqOWPnI1HrP5E",
   authDomain: "messenger-7c40c.firebaseapp.com",
@@ -71,6 +71,88 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+
+const TypingAnimation = () => (
+  <div className="flex items-center space-x-3 p-3">
+    <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+      <Bot className="w-4 h-4 text-white" />
+    </div>
+    <span className="text-gray-400 text-sm">Thinking...</span>
+  </div>
+);
+
+const TypewriterText = ({ text }: { text: string }) => {
+  const [displayedText, setDisplayedText] = useState('');
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex]);
+        setCurrentIndex(prev => prev + 1);
+      }, 5);
+      return () => clearTimeout(timeout);
+    }
+  }, [currentIndex, text]);
+
+  return (
+    <motion.span
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      {displayedText}
+    </motion.span>
+  );
+};
+
+const formatMarkdown = (text: string) => {
+  // Convert markdown formatting to JSX
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/##\s+(.*?)(?=\n|$)/g, '<h2 class="text-lg font-semibold mt-4 mb-2 text-white">$1</h2>')
+    .replace(/\n/g, '<br/>');
+};
+
+const CodeCanvas = ({ code }: { code: string }) => (
+  <div className="bg-gray-900 rounded-lg p-4 my-3 border border-gray-700">
+    <div className="flex items-center justify-between mb-3">
+      <div className="text-xs text-gray-400 font-medium">Code</div>
+      <Button
+        onClick={() => navigator.clipboard.writeText(code)}
+        variant="ghost"
+        size="sm"
+        className="text-gray-400 hover:text-white h-7 px-2"
+      >
+        Copy
+      </Button>
+    </div>
+    <pre className="text-sm text-gray-100 overflow-x-auto whitespace-pre-wrap">
+      <code>{code}</code>
+    </pre>
+  </div>
+);
+
+const ImageModal = ({ imageUrl, onClose }: { imageUrl: string; onClose: () => void }) => (
+  <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={onClose}>
+    <div className="relative max-w-4xl max-h-4xl p-4">
+      <Button
+        onClick={onClose}
+        variant="ghost"
+        size="icon"
+        className="absolute top-2 right-2 text-white hover:bg-gray-800 z-10"
+      >
+        <X className="w-6 h-6" />
+      </Button>
+      <img 
+        src={imageUrl} 
+        alt="Full screen view" 
+        className="max-w-full max-h-full object-contain rounded-lg"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  </div>
+);
 
 const AuthScreen = ({ onSignIn }: { onSignIn: () => void }) => {
   const { toast } = useToast();
@@ -92,6 +174,7 @@ const AuthScreen = ({ onSignIn }: { onSignIn: () => void }) => {
 
   return (
     <div className="flex flex-col h-screen bg-black text-white">
+      {/* Header */}
       <header className="flex justify-center items-center p-4 bg-black/80 backdrop-blur-lg">
         <div className="flex items-center gap-3">
           <img 
@@ -105,8 +188,10 @@ const AuthScreen = ({ onSignIn }: { onSignIn: () => void }) => {
         </div>
       </header>
 
+      {/* Main Content */}
       <div className="flex-1 flex items-center justify-center px-4">
         <div className="flex flex-col lg:flex-row items-center justify-center gap-6 md:gap-10 max-w-6xl w-full">
+          {/* Left Section */}
           <div className="flex-1 max-w-2xl text-center lg:text-left">
             <h1 className="text-2xl md:text-4xl lg:text-5xl font-semibold leading-tight mb-6 md:mb-8">
               <span className="block mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
@@ -118,6 +203,7 @@ const AuthScreen = ({ onSignIn }: { onSignIn: () => void }) => {
             </h1>
           </div>
 
+          {/* Right Section */}
           <div className="flex flex-col gap-4 w-full max-w-sm">
             <button 
               onClick={handleGoogleSignIn}
@@ -140,6 +226,7 @@ const AuthScreen = ({ onSignIn }: { onSignIn: () => void }) => {
         </div>
       </div>
 
+      {/* Footer */}
       <div className="flex justify-center gap-6 md:gap-8 p-4 bg-white/5">
         <a href="https://coreastarstroupe.netlify.app/privacy-policy" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Privacy</a>
         <a href="https://coreastarstroupe.netlify.app/terms-of-service" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Terms</a>
@@ -164,7 +251,6 @@ export const ChatInterface = () => {
   const [currentEssayContent, setCurrentEssayContent] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isGeneratingEssay, setIsGeneratingEssay] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -176,6 +262,7 @@ export const ChatInterface = () => {
     type: 'message' | 'conversation';
   }>({ isOpen: false, type: 'message' });
 
+  // Add system theme detection
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     
@@ -187,16 +274,20 @@ export const ChatInterface = () => {
       }
     };
 
+    // Set initial theme
     if (mediaQuery.matches) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
 
+    // Listen for changes
     mediaQuery.addEventListener('change', handleThemeChange);
+
     return () => mediaQuery.removeEventListener('change', handleThemeChange);
   }, []);
 
+  // Load conversations from localStorage on component mount
   useEffect(() => {
     const saved = localStorage.getItem('nexora-conversations');
     if (saved) {
@@ -216,18 +307,21 @@ export const ChatInterface = () => {
     }
   }, []);
 
+  // Save conversations to localStorage whenever conversations change
   useEffect(() => {
     if (conversations.length > 0) {
       localStorage.setItem('nexora-conversations', JSON.stringify(conversations));
     }
   }, [conversations]);
 
+  // Auto-scroll to bottom
   useEffect(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
 
+  // Firebase auth listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
@@ -245,6 +339,7 @@ export const ChatInterface = () => {
     return () => unsubscribe();
   }, []);
 
+  // Clipboard paste support
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
@@ -343,6 +438,7 @@ export const ChatInterface = () => {
     const contentToSend = messageContent || input;
     if (!contentToSend.trim() && !uploadedImage) return;
 
+    // Create new conversation if none exists
     if (!currentConversationId) {
       createNewConversation();
     }
@@ -360,9 +456,11 @@ export const ChatInterface = () => {
     setInput('');
     setUploadedImage(null);
 
+    // Check if it's a Wikipedia search result
     const isWikipediaResult = contentToSend.startsWith('Wikipedia search results for');
     
     if (isWikipediaResult) {
+      // For Wikipedia results, just add the message without API call
       updateConversation(newMessages);
       return;
     }
@@ -370,11 +468,7 @@ export const ChatInterface = () => {
     const isEssayRequest = detectEssayRequest(contentToSend);
     const isReasoningModel = selectedModel === 'qwen-qwq-32b';
 
-    if (isEssayRequest) {
-      setIsGeneratingEssay(true);
-    } else {
-      setIsLoading(true);
-    }
+    setIsLoading(true);
 
     try {
       trackApiCall(selectedModel);
@@ -411,6 +505,7 @@ export const ChatInterface = () => {
       let responseContent = data.choices[0].message.content;
       let reasoning = '';
 
+      // Extract reasoning for QwQ model
       if (isReasoningModel && responseContent.includes('<think>')) {
         const thinkMatch = responseContent.match(/<think>([\s\S]*?)<\/think>/);
         if (thinkMatch) {
@@ -479,7 +574,6 @@ export const ChatInterface = () => {
       });
     } finally {
       setIsLoading(false);
-      setIsGeneratingEssay(false);
     }
   };
 
@@ -487,14 +581,17 @@ export const ChatInterface = () => {
     const messageIndex = messages.findIndex(m => m.id === messageId);
     if (messageIndex === -1) return;
 
+    // Find the last user message before this assistant message
     const precedingMessages = messages.slice(0, messageIndex);
     const lastUserMessage = precedingMessages.filter(m => m.role === 'user').pop();
     
     if (!lastUserMessage) return;
 
+    // Remove the assistant message and any following messages
     const newMessages = messages.slice(0, messageIndex);
     setMessages(newMessages);
     
+    // Resend the user message
     await sendMessage(lastUserMessage.content);
   };
 
@@ -528,6 +625,7 @@ export const ChatInterface = () => {
 
   const editMessage = (messageId: string, newContent: string) => {
     if (editingMessageId === messageId) {
+      // Save the edit
       const newMessages = messages.map(m => 
         m.id === messageId ? { ...m, content: newContent } : m
       );
@@ -535,6 +633,7 @@ export const ChatInterface = () => {
       updateConversation(newMessages);
       setEditingMessageId(null);
     } else {
+      // Start editing
       setEditingMessageId(messageId);
     }
   };
@@ -595,6 +694,7 @@ export const ChatInterface = () => {
 
   return (
     <div className="flex h-screen bg-black text-white font-google-sans">
+      {/* Sidebar */}
       <ConversationSidebar
         conversations={conversations}
         currentConversationId={currentConversationId}
@@ -605,9 +705,14 @@ export const ChatInterface = () => {
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         user={user}
+        selectedModel={selectedModel}
+        onModelChange={setSelectedModel}
+        models={MODELS}
       />
       
+      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
         <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black">
           <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
             <Button
@@ -685,6 +790,7 @@ export const ChatInterface = () => {
           </div>
         </div>
 
+        {/* Messages or Initial State */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {messages.length === 0 ? (
             <div className="flex-1 flex items-center justify-center px-4">
@@ -725,7 +831,7 @@ export const ChatInterface = () => {
                         />
                         
                         {message.isCode ? (
-                          <EssayCanvas content={message.content} />
+                          <CodeCanvas code={message.content} />
                         ) : message.isEssay ? (
                           <div className="bg-gray-900 rounded-lg p-3 md:p-4 my-3 border border-gray-700">
                             <div className="flex items-center justify-between mb-3">
@@ -788,13 +894,8 @@ export const ChatInterface = () => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <CustomLoader />
+                      <AnimatedLoader />
                     </motion.div>
-                  </div>
-                )}
-                {isGeneratingEssay && (
-                  <div className="flex justify-center py-8">
-                    <EssayLoader />
                   </div>
                 )}
               </div>
@@ -803,18 +904,16 @@ export const ChatInterface = () => {
           )}
         </div>
 
+        {/* Input Area */}
         <div className="px-2 md:px-4 pb-4 md:pb-6 pt-2 bg-black">
           <AIPromptInput
             value={input}
             onChange={setInput}
             onSendMessage={() => sendMessage()}
             onImageUpload={handleImageUpload}
-            disabled={isLoading || isGeneratingEssay}
+            disabled={isLoading}
             uploadedImage={uploadedImage}
             onRemoveImage={() => setUploadedImage(null)}
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-            models={MODELS}
           />
         </div>
       </div>

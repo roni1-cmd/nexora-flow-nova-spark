@@ -1,8 +1,7 @@
 
 import React, { useState, useRef } from 'react';
-import { Globe, Paperclip, Send, ChevronDown } from "lucide-react";
+import { Globe, Paperclip, Send } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
@@ -16,9 +15,6 @@ interface AIPromptInputProps {
   disabled?: boolean;
   uploadedImage?: string | null;
   onRemoveImage?: () => void;
-  selectedModel: string;
-  onModelChange: (model: string) => void;
-  models: Array<{ id: string; name: string }>;
 }
 
 interface WikipediaResult {
@@ -35,9 +31,6 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   disabled = false,
   uploadedImage,
   onRemoveImage,
-  selectedModel,
-  onModelChange,
-  models,
 }) => {
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 52,
@@ -72,6 +65,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
       
       if (data.query && data.query.search) {
         setSearchResults(data.query.search);
+        // Format the results and send as a message
         const formattedResults = data.query.search.map((result: any) => 
           `**${result.title}**: ${result.snippet.replace(/<[^>]*>/g, '')}`
         ).join('\n\n');
@@ -127,23 +121,6 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   return (
     <div className="w-full py-4">
       <div className="relative max-w-2xl w-full mx-auto">
-        {/* Model Selector */}
-        <div className="mb-3 flex justify-center">
-          <Select value={selectedModel} onValueChange={onModelChange}>
-            <SelectTrigger className="w-48 bg-white/5 border-white/10 text-white text-xs h-8">
-              <SelectValue />
-              <ChevronDown className="w-3 h-3 opacity-50" />
-            </SelectTrigger>
-            <SelectContent className="bg-gray-900 border-gray-700 text-white">
-              {models.map((model) => (
-                <SelectItem key={model.id} value={model.id} className="text-xs hover:bg-gray-800">
-                  {model.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
         {/* Uploaded Image Preview */}
         {uploadedImage && (
           <div className="mb-3 relative inline-block">
