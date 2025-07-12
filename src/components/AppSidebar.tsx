@@ -76,10 +76,10 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         />
       )}
       
-      {/* Sidebar - removed border */}
+      {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed top-0 left-0 z-40 h-screen transition-all duration-300 bg-black",
+          "fixed top-0 left-0 z-40 h-screen transition-all duration-300 bg-black border-r border-gray-800",
           sidebarWidth,
           isOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"
         )}
@@ -208,17 +208,17 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             </div>
           </ScrollArea>
 
-          {/* Enhanced CTA Section - just features list */}
+          {/* Enhanced CTA Section */}
           {!isCollapsed && (
             <div className="p-4 rounded-lg bg-gradient-to-br from-purple-900/30 to-blue-900/20 border border-purple-500/30">
               <div className="flex items-center mb-3">
                 <Crown className="w-4 h-4 text-purple-400 mr-2" />
                 <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent text-sm font-bold">
-                  nexora Pro Features
+                  nexora Pro
                 </span>
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-2 mb-4">
                 <div className="flex items-center text-xs text-purple-200">
                   <Zap className="w-3 h-3 mr-2 text-purple-400" />
                   <span>Unlimited conversations</span>
@@ -231,11 +231,14 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                   <Bot className="w-3 h-3 mr-2 text-purple-400" />
                   <span>Priority support</span>
                 </div>
-                <div className="flex items-center text-xs text-purple-200">
-                  <MessageSquare className="w-3 h-3 mr-2 text-purple-400" />
-                  <span>Export conversations</span>
-                </div>
               </div>
+              
+              <Button 
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm border-0 shadow-lg"
+                onClick={() => window.open('https://coreastarstroupe.netlify.app/pricing', '_blank')}
+              >
+                Upgrade Now
+              </Button>
             </div>
           )}
         </div>
