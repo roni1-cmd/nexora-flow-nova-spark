@@ -35,7 +35,7 @@ interface Conversation {
 interface User {
   displayName: string;
   email: string;
-  photoURL?: string;
+  photoURL: string; // Make required to match UserProfile expectations
   company: string;
   founded: string;
   founder: string;
@@ -240,7 +240,7 @@ export const ChatInterface: React.FC = () => {
   const user: User = {
     displayName: 'Ron Asnahon',
     email: 'ron@coreastarstroupe.com',
-    photoURL: '',
+    photoURL: '', // Provide empty string as fallback
     company: 'Corea Starstroupe',
     founded: '2023',
     founder: 'Ron Asnahon',

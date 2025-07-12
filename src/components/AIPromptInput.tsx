@@ -18,10 +18,16 @@ export const AIPromptInput: React.FC<AIPromptInputProps> = ({
 }) => {
   const [message, setMessage] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useAutoResizeTextarea(textareaRef);
+  const { textareaRef, adjustHeight } = useAutoResizeTextarea({ 
+    minHeight: 24, 
+    maxHeight: 200 
+  });
+
+  useEffect(() => {
+    adjustHeight();
+  }, [message, adjustHeight]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +35,7 @@ export const AIPromptInput: React.FC<AIPromptInputProps> = ({
       onSendMessage(message.trim(), attachments);
       setMessage('');
       setAttachments([]);
+      adjustHeight(true); // Reset height
     }
   };
 
