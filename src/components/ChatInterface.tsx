@@ -22,6 +22,7 @@ import ConfirmDialog from './ConfirmDialog';
 import AnimatedLoader from './AnimatedLoader';
 import DynamicText from './DynamicText';
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 interface Message {
   id: string;
@@ -369,6 +370,9 @@ const ChatInterface = () => {
     return <AuthScreen />;
   }
 
+  // Check if sidebar is collapsed by looking at the sidebar state
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   return (
     <div className="flex h-screen bg-black text-white font-google-sans">
       <AppSidebar
@@ -407,18 +411,15 @@ const ChatInterface = () => {
         onToggle={() => setSidebarOpen(!sidebarOpen)}
       />
       
-      <div className="flex-1 flex flex-col overflow-hidden transition-all duration-300 sm:ml-16 lg:ml-64">
+      <div className={cn(
+        "flex-1 flex flex-col overflow-hidden transition-all duration-300",
+        sidebarOpen ? "sm:ml-16 lg:ml-64" : "sm:ml-0 lg:ml-0" // Default margins for sidebar
+      )}>
         <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black">
           <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
-            <div className="flex items-center space-x-2 md:space-x-3">
-              <span className="text-lg md:text-xl font-medium text-white">nexora</span>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
-            {/* Model Selector */}
+            {/* Model Selector replacing "nexora" */}
             <Select value={selectedModel} onValueChange={setSelectedModel}>
-              <SelectTrigger className="w-40 bg-gray-900 border-gray-700 text-white text-sm">
+              <SelectTrigger className="w-48 bg-gray-900 border-gray-700 text-white text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-gray-900 border-gray-700 text-white">
@@ -429,7 +430,9 @@ const ChatInterface = () => {
                 ))}
               </SelectContent>
             </Select>
-            
+          </div>
+          
+          <div className="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-1 md:space-x-2 hover:bg-gray-800 p-1 md:p-2">
@@ -486,9 +489,10 @@ const ChatInterface = () => {
           {messages.length === 0 ? (
             <div className="flex-1 flex items-center justify-center px-4">
               <div className="text-center">
-                <div className="flex items-center justify-center mb-6">
+                {/* Bringing greeting closer to name */}
+                <div className="flex items-center justify-center gap-1 mb-6">
                   <DynamicText />
-                  <span className="text-2xl md:text-4xl font-light text-white ml-2">
+                  <span className="text-2xl md:text-4xl font-light text-white">
                     <span className="text-purple-400">{user.displayName}</span>
                   </span>
                 </div>
