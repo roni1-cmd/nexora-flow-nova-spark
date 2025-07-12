@@ -214,22 +214,18 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               <div className="flex items-center mb-3">
                 <Crown className="w-4 h-4 text-purple-400 mr-2" />
                 <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent text-sm font-bold">
-                  nexora Pro
+                  WHAT'S NEW?
                 </span>
               </div>
               
               <div className="space-y-2 mb-4">
                 <div className="flex items-center text-xs text-purple-200">
                   <Zap className="w-3 h-3 mr-2 text-purple-400" />
-                  <span>Unlimited conversations</span>
+                  <span>Now with reasoning mode with nexora Cortex-Cerebruc 24b.</span>
                 </div>
                 <div className="flex items-center text-xs text-purple-200">
                   <Sparkles className="w-3 h-3 mr-2 text-purple-400" />
-                  <span>Advanced AI models</span>
-                </div>
-                <div className="flex items-center text-xs text-purple-200">
-                  <Bot className="w-3 h-3 mr-2 text-purple-400" />
-                  <span>Priority support</span>
+                  <span>Searching the web with Wikipedia and summarize important key pointers.</span>
                 </div>
               </div>
               
