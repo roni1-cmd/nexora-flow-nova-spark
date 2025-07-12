@@ -57,7 +57,7 @@ const MODELS = [
   { id: 'qwen-qwq-32b', name: 'nexora Cortex-Cerebruc' },
 ];
 
-const API_KEY = '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';
+const API_KEY = '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';
 
 // Firebase configuration
 const firebaseConfig = {
