@@ -300,6 +300,11 @@ In conclusion, this essay has examined the key elements and provided valuable in
   const currentConversation = getCurrentConversation();
   const messages = currentConversation?.messages || [];
 
+  // Conditional rendering - show UserProfile if showProfile is true
+  if (showProfile) {
+    return <UserProfile user={mockUser} />;
+  }
+
   return (
     <div className="flex h-screen bg-white">
       <ConversationSidebar
@@ -422,12 +427,6 @@ In conclusion, this essay has examined the key elements and provided valuable in
       </div>
 
       {/* Modals */}
-      <UserProfile
-        isOpen={showProfile}
-        onClose={() => setShowProfile(false)}
-        user={mockUser}
-      />
-
       <EssayModal
         isOpen={showEssayModal}
         onClose={() => setShowEssayModal(false)}
