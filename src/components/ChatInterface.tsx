@@ -126,32 +126,10 @@ const AuthScreen = () => (
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="text-4xl font-light text-white mb-4">Welcome to nexora</h1>
-            <p className="text-gray-400 text-lg mb-8">Your intelligent AI companion</p>
+            <h1 className="text-4xl font-light text-white mb-4">Welcome back</h1>
+            <p className="text-gray-400 text-lg mb-8">You command a constellation. Sign In. Rewrite the possibilities.</p>
           </motion.div>
           
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="mb-8"
-          >
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="bg-gray-900 rounded-lg p-4 text-center">
-                <Zap className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-                <p className="text-xs text-gray-300">Fast</p>
-              </div>
-              <div className="bg-gray-900 rounded-lg p-4 text-center">
-                <Bot className="w-6 h-6 text-blue-400 mx-auto mb-2" />
-                <p className="text-xs text-gray-300">Smart</p>
-              </div>
-              <div className="bg-gray-900 rounded-lg p-4 text-center">
-                <MessageSquare className="w-6 h-6 text-green-400 mx-auto mb-2" />
-                <p className="text-xs text-gray-300">Helpful</p>
-              </div>
-            </div>
-          </motion.div>
-        </div>
         
         <motion.div
           initial={{ opacity: 0, y: 20 }}
