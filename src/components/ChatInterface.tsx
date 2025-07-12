@@ -4,7 +4,7 @@ import { Send, Menu, Bot, User as UserIcon, Copy, ThumbsUp, ThumbsDown, RotateCc
 import { Button } from '@/components/ui/button';
 import { ConversationSidebar } from './ConversationSidebar';
 import { AIPromptInput } from './AIPromptInput';
-import { AITextLoading } from './AITextLoading';
+import AITextLoading from './AITextLoading';
 import ConfirmDialog from './ConfirmDialog';
 import { MessageActions } from './MessageActions';
 import WikipediaLoader from './WikipediaLoader';
@@ -319,9 +319,8 @@ export const ChatInterface: React.FC = () => {
                     
                     {message.sender === 'ai' && !message.isLoading && (
                       <MessageActions
+                        content={message.content}
                         messageId={message.id}
-                        onShowReasoning={() => message.reasoning && handleShowReasoning(message.reasoning)}
-                        onViewEssay={() => message.essay && handleViewEssay(message.essay)}
                       />
                     )}
                   </div>
@@ -364,7 +363,7 @@ export const ChatInterface: React.FC = () => {
         onClose={() => setDeleteConversationId(null)}
         onConfirm={confirmDelete}
         title="Delete Conversation"
-        message="Are you sure you want to delete this conversation? This action cannot be undone."
+        description="Are you sure you want to delete this conversation? This action cannot be undone."
       />
 
       {showEssayModal && (
@@ -379,7 +378,7 @@ export const ChatInterface: React.FC = () => {
       {showReasoningView && (
         <ReasoningView
           reasoning={currentReasoning}
-          onClose={() => setShowReasoningView(false)}
+          isVisible={showReasoningView}
         />
       )}
 

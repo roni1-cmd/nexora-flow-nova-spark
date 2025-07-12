@@ -21,7 +21,7 @@ export const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useAutoResizeTextarea(textareaRef, message);
+  useAutoResizeTextarea(textareaRef);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
