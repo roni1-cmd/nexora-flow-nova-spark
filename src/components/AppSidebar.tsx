@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { MessageSquare, Plus, Search, X, Bot, Menu } from 'lucide-react';
+import { MessageSquare, Plus, Search, X, Bot, Menu, ChevronLeft, ChevronRight, Zap, Crown, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   onToggle,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const formatDate = (date: Date) => {
     const now = new Date();
@@ -52,6 +53,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     conv.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     conv.lastMessage.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const sidebarWidth = isCollapsed ? 'w-16' : 'w-64';
 
   return (
     <>
@@ -76,97 +79,124 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed top-0 left-0 z-40 w-64 h-screen transition-transform bg-black",
+          "fixed top-0 left-0 z-40 h-screen transition-all duration-300 bg-black border-r border-gray-800",
+          sidebarWidth,
           isOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"
         )}
       >
-        <div className="h-full px-3 py-4 overflow-y-auto">
-          {/* Close button for mobile */}
-          <Button
-            onClick={onClose}
-            variant="ghost"
-            size="sm"
-            className="sm:hidden absolute top-2 right-2 text-white hover:bg-gray-800 p-1"
-          >
-            <X className="w-4 h-4" />
-          </Button>
+        <div className="h-full px-3 py-4 overflow-y-auto flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            {!isCollapsed && (
+              <div className="flex items-center">
+                <img 
+                  src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
+                  alt="nexora" 
+                  className="w-8 h-8 mr-3"
+                />
+                <span className="text-xl font-semibold text-white">nexora</span>
+              </div>
+            )}
+            
+            {/* Collapse Toggle */}
+            <Button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              variant="ghost"
+              size="sm"
+              className="hidden sm:flex text-white hover:bg-gray-800 p-2"
+            >
+              {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            </Button>
 
-          {/* Header with nexora branding */}
-          <div className="flex items-center mb-6 pt-2">
-            <img 
-              src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
-              alt="nexora" 
-              className="w-8 h-8 mr-3"
-            />
-            <span className="text-xl font-semibold text-white">nexora</span>
+            {/* Mobile Close */}
+            <Button
+              onClick={onClose}
+              variant="ghost"
+              size="sm"
+              className="sm:hidden text-white hover:bg-gray-800 p-1"
+            >
+              <X className="w-4 h-4" />
+            </Button>
           </div>
 
-          {/* Navigation Menu */}
-          <ul className="space-y-2 font-medium mb-6">
-            <li>
-              <button
-                onClick={onNewConversation}
-                className="flex items-center w-full p-2 text-white rounded-lg hover:bg-gray-800 group"
-              >
-                <Plus className="w-5 h-5 text-gray-400 transition duration-75 group-hover:text-white" />
-                <span className="ml-3">New Chat</span>
-              </button>
-            </li>
-            <li>
-              <div className="flex items-center p-2 text-white rounded-lg">
-                <MessageSquare className="w-5 h-5 text-gray-400" />
-                <span className="ml-3">Conversations</span>
-              </div>
-            </li>
-          </ul>
+          {/* New Chat Button */}
+          <div className="mb-4">
+            <button
+              onClick={onNewConversation}
+              className={cn(
+                "flex items-center w-full p-3 text-white rounded-lg hover:bg-gray-800 group transition-colors",
+                isCollapsed ? "justify-center" : "justify-start"
+              )}
+            >
+              <Plus className="w-5 h-5 text-gray-400 transition duration-75 group-hover:text-white flex-shrink-0" />
+              {!isCollapsed && <span className="ml-3">New Chat</span>}
+            </button>
+          </div>
 
           {/* Search */}
-          <div className="relative mb-4">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              placeholder="Search conversations..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-gray-600"
-            />
-          </div>
+          {!isCollapsed && (
+            <div className="relative mb-4">
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="Search conversations..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-gray-600"
+              />
+            </div>
+          )}
+
+          {/* Conversations Header */}
+          {!isCollapsed && (
+            <div className="flex items-center p-2 text-white mb-2">
+              <MessageSquare className="w-5 h-5 text-gray-400 mr-3" />
+              <span>Conversations</span>
+            </div>
+          )}
 
           {/* Conversations List */}
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 mb-6">
             <div className="space-y-1">
               {filteredConversations.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
-                  <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-50" />
-                  <p className="text-sm">No conversations yet</p>
-                </div>
+                !isCollapsed && (
+                  <div className="text-center text-gray-500 py-8">
+                    <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No conversations yet</p>
+                  </div>
+                )
               ) : (
                 filteredConversations.map((conversation) => (
                   <div
                     key={conversation.id}
                     className={cn(
-                      "group relative p-3 rounded-lg cursor-pointer transition-all duration-200",
+                      "group relative rounded-lg cursor-pointer transition-all duration-200",
                       currentConversationId === conversation.id
                         ? 'bg-gray-800'
-                        : 'hover:bg-gray-800/50'
+                        : 'hover:bg-gray-800/50',
+                      isCollapsed ? "p-2 flex justify-center" : "p-3"
                     )}
                     onClick={() => {
                       onSelectConversation(conversation.id);
                       if (window.innerWidth < 640) onClose();
                     }}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0 pr-2">
-                        <h3 className="font-medium text-sm text-white truncate mb-1">
-                          {conversation.title}
-                        </h3>
-                        <p className="text-xs text-gray-400 truncate mb-2">
-                          {conversation.lastMessage}
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <span>{formatDate(conversation.timestamp)}</span>
+                    {isCollapsed ? (
+                      <MessageSquare className="w-5 h-5 text-gray-400" />
+                    ) : (
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <h3 className="font-medium text-sm text-white truncate mb-1">
+                            {conversation.title}
+                          </h3>
+                          <p className="text-xs text-gray-400 truncate mb-2">
+                            {conversation.lastMessage}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span>{formatDate(conversation.timestamp)}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                     
                     {/* Active indicator */}
                     {currentConversationId === conversation.id && (
@@ -178,23 +208,39 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             </div>
           </ScrollArea>
 
-          {/* CTA Section */}
-          <div className="mt-6 p-4 rounded-lg bg-purple-900/20 border border-purple-500/30">
-            <div className="flex items-center mb-3">
-              <span className="bg-purple-500 text-white text-xs font-semibold px-2 py-1 rounded">
-                Pro
-              </span>
+          {/* Enhanced CTA Section */}
+          {!isCollapsed && (
+            <div className="p-4 rounded-lg bg-gradient-to-br from-purple-900/30 to-blue-900/20 border border-purple-500/30">
+              <div className="flex items-center mb-3">
+                <Crown className="w-4 h-4 text-purple-400 mr-2" />
+                <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent text-sm font-bold">
+                  nexora Pro
+                </span>
+              </div>
+              
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center text-xs text-purple-200">
+                  <Zap className="w-3 h-3 mr-2 text-purple-400" />
+                  <span>Unlimited conversations</span>
+                </div>
+                <div className="flex items-center text-xs text-purple-200">
+                  <Sparkles className="w-3 h-3 mr-2 text-purple-400" />
+                  <span>Advanced AI models</span>
+                </div>
+                <div className="flex items-center text-xs text-purple-200">
+                  <Bot className="w-3 h-3 mr-2 text-purple-400" />
+                  <span>Priority support</span>
+                </div>
+              </div>
+              
+              <Button 
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm border-0 shadow-lg"
+                onClick={() => window.open('https://coreastarstroupe.netlify.app/pricing', '_blank')}
+              >
+                Upgrade Now
+              </Button>
             </div>
-            <p className="mb-3 text-sm text-purple-200">
-              Unlock advanced features with nexora Pro. Get unlimited conversations and priority support.
-            </p>
-            <Button 
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm"
-              onClick={() => window.open('https://coreastarstroupe.netlify.app/pricing', '_blank')}
-            >
-              Upgrade to Pro
-            </Button>
-          </div>
+          )}
         </div>
       </aside>
     </>
