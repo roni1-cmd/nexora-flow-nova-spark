@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, X, ChevronDown, LogOut, User, Zap, Bot, ArrowLeft, MessageSquare, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -88,6 +89,20 @@ const formatMarkdown = (text: string) => {
     .replace(/\n/g, '<br/>');
 };
 
+const ImageModal = ({ imageUrl, onClose }: { imageUrl: string; onClose: () => void }) => (
+  <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={onClose}>
+    <div className="relative max-w-4xl max-h-4xl p-4">
+      <button
+        onClick={onClose}
+        className="absolute top-2 right-2 text-white hover:text-gray-300"
+      >
+        <X className="w-6 h-6" />
+      </button>
+      <img src={imageUrl} alt="Full size" className="max-w-full max-h-full object-contain" />
+    </div>
+  </div>
+);
+
 const ChatInterface = () => {
   const [user, setUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -131,6 +146,14 @@ const ChatInterface = () => {
 
     return () => unsubscribe();
   }, []);
+
+  const handleImageUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setUploadedImage(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const sendMessage = async () => {
     const contentToSend = input;
@@ -401,7 +424,7 @@ const ChatInterface = () => {
                     <MessageActions
                       content={message.content}
                       messageId={message.id}
-                      onRegenerate={message.role === 'assistant' ? () => {}}
+                      onRegenerate={message.role === 'assistant' ? () => {} : undefined}
                       onDelete={() => {}}
                       onEdit={(newContent) => {}}
                       isEditing={editingMessageId === message.id}
@@ -437,6 +460,11 @@ const ChatInterface = () => {
           />
         </div>
       </div>
+      {showProfile && (
+        <UserProfile 
+          user={user}
+        />
+      )}
       <EssayModal
         isOpen={essayModalOpen}
         onClose={() => setEssayModalOpen(false)}
