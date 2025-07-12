@@ -5,10 +5,10 @@ import { MessageActions } from './MessageActions';
 import { UserProfile } from './UserProfile';
 import { EssayModal } from './EssayModal';
 import { ReasoningView } from './ReasoningView';
-import { ConfirmDialog } from './ConfirmDialog';
+import ConfirmDialog from './ConfirmDialog';
 import { EssayCanvas } from './EssayCanvas';
-import { WikipediaLoader } from './WikipediaLoader';
-import { CustomLoader } from './CustomLoader';
+import WikipediaLoader from './WikipediaLoader';
+import CustomLoader from './CustomLoader';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Menu, Plus } from 'lucide-react';
@@ -37,14 +37,25 @@ interface Conversation {
   messages: Message[];
 }
 
+interface User {
+  displayName: string;
+  email: string;
+  company: string;
+  founded: string;
+  founder: string;
+  location: string;
+  photoURL: string;
+}
+
 // Mock user data for Nexora AI
-const mockUser = {
+const mockUser: User = {
   displayName: 'User',
   email: 'm@example.com',
   company: 'Nexora AI',
   founded: '2023',
   founder: 'Ron Asnahon',
-  location: 'Corea Starstroupe'
+  location: 'Corea Starstroupe',
+  photoURL: 'https://github.com/shadcn.png' // Added missing photoURL
 };
 
 const models = [
@@ -367,7 +378,7 @@ In conclusion, this essay has examined the key elements and provided valuable in
 
           {messages.map((message) => (
             <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-3xl rounded-lg px-4 py-2 ${
+              <div className={`max-w-3xl rounded-lg px-4 py-2 group ${
                 message.isUser 
                   ? 'bg-blue-600 text-white' 
                   : 'bg-gray-100 text-gray-900'
@@ -375,12 +386,11 @@ In conclusion, this essay has examined the key elements and provided valuable in
                 <div className="whitespace-pre-wrap">{message.content}</div>
                 {!message.isUser && (
                   <MessageActions
-                    message={message}
-                    onShowReasoning={() => {
-                      setCurrentReasoning(message.reasoning || '');
-                      setShowReasoningView(true);
+                    content={message.content}
+                    messageId={message.id}
+                    onRegenerate={() => {
+                      // Handle regenerate
                     }}
-                    onViewEssay={() => setShowEssayModal(true)}
                   />
                 )}
               </div>
@@ -422,12 +432,12 @@ In conclusion, this essay has examined the key elements and provided valuable in
         isOpen={showEssayModal}
         onClose={() => setShowEssayModal(false)}
         content={essayContent}
+        onContentChange={setEssayContent}
       />
 
       <ReasoningView
-        isOpen={showReasoningView}
-        onClose={() => setShowReasoningView(false)}
         reasoning={currentReasoning}
+        isVisible={showReasoningView}
       />
 
       <ConfirmDialog
