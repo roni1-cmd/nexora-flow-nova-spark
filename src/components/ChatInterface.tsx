@@ -1,25 +1,41 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Send, Menu, Bot, User as UserIcon, Copy, ThumbsUp, ThumbsDown, RotateCcw, MessageSquare, Volume2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Download, X, ChevronDown, LogOut, User, Zap, Bot, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ConversationSidebar } from './ConversationSidebar';
-import { AIPromptInput } from './AIPromptInput';
-import AITextLoading from './AITextLoading';
-import ConfirmDialog from './ConfirmDialog';
-import { MessageActions } from './MessageActions';
-import WikipediaLoader from './WikipediaLoader';
-import CustomLoader from './CustomLoader';
+import { Progress } from '@/components/ui/progress';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useToast } from '@/hooks/use-toast';
+import { initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { UserProfile } from './UserProfile';
+import { EssayCanvas } from './EssayCanvas';
 import { EssayModal } from './EssayModal';
 import { ReasoningView } from './ReasoningView';
-import { UserProfile } from './UserProfile';
+import { MessageActions } from './MessageActions';
+import { ConversationSidebar } from './ConversationSidebar';
+import { useUsageTracking } from '@/hooks/useUsageTracking';
+import AIPromptInput from './AIPromptInput';
+import AITextLoading from './AITextLoading';
+import CustomLoader from './CustomLoader';
+import ConfirmDialog from './ConfirmDialog';
+import AnimatedLoader from './AnimatedLoader';
+import { motion } from 'framer-motion';
 
 interface Message {
   id: string;
+  role: 'user' | 'assistant';
   content: string;
-  sender: 'user' | 'ai';
-  timestamp: Date;
+  imageUrl?: string;
+  isCode?: boolean;
+  isEssay?: boolean;
   reasoning?: string;
-  essay?: string;
-  isLoading?: boolean;
+  timestamp?: Date;
+}
+
+interface User {
+  displayName: string;
+  email: string;
+  photoURL: string;
 }
 
 interface Conversation {
@@ -31,228 +47,659 @@ interface Conversation {
   messages: Message[];
 }
 
-interface User {
-  displayName: string;
-  email: string;
-  photoURL: string; // Make required to match UserProfile expectations
-  company: string;
-  founded: string;
-  founder: string;
-  location: string;
-}
+const MODELS = [
+  { id: 'gemma2-9b-it', name: 'nexora node-X7' },
+  { id: 'llama-3.1-8b-instant', name: 'nexora orion-9' },
+  { id: 'llama-3.3-70b-versatile', name: 'nexora fract-01' },
+  { id: 'mistral-saba-24b', name: 'nexora cryptiq-32R' },
+  { id: 'qwen-qwq-32b', name: 'nexora Cortex-Cerebruc' },
+];
 
-const STORAGE_KEY = 'nexora_conversations';
-const CURRENT_CONVERSATION_KEY = 'nexora_current_conversation';
+const API_KEY = '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';
 
-export const ChatInterface: React.FC = () => {
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCB1DwFSwQLDOlUFtWQtUvqOWPnI1HrP5E",
+  authDomain: "messenger-7c40c.firebaseapp.com",
+  projectId: "messenger-7c40c",
+  storageBucket: "messenger-7c40c.firebasestorage.app",
+  messagingSenderId: "435817942279",
+  appId: "1:435817942279:web:36b3f65e6358d8aa0a49a2",
+  measurementId: "G-HJ094HC4F2"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+const TypingAnimation = () => (
+  <div className="flex items-center space-x-3 p-3">
+    <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+      <Bot className="w-4 h-4 text-white" />
+    </div>
+    <span className="text-gray-400 text-sm">Thinking...</span>
+  </div>
+);
+
+const TypewriterText = ({ text }: { text: string }) => {
+  const [displayedText, setDisplayedText] = useState('');
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex]);
+        setCurrentIndex(prev => prev + 1);
+      }, 5);
+      return () => clearTimeout(timeout);
+    }
+  }, [currentIndex, text]);
+
+  return (
+    <motion.span
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      {displayedText}
+    </motion.span>
+  );
+};
+
+const formatMarkdown = (text: string) => {
+  // Convert markdown formatting to JSX
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/##\s+(.*?)(?=\n|$)/g, '<h2 class="text-lg font-semibold mt-4 mb-2 text-white">$1</h2>')
+    .replace(/\n/g, '<br/>');
+};
+
+const CodeCanvas = ({ code }: { code: string }) => (
+  <div className="bg-gray-900 rounded-lg p-4 my-3 border border-gray-700">
+    <div className="flex items-center justify-between mb-3">
+      <div className="text-xs text-gray-400 font-medium">Code</div>
+      <Button
+        onClick={() => navigator.clipboard.writeText(code)}
+        variant="ghost"
+        size="sm"
+        className="text-gray-400 hover:text-white h-7 px-2"
+      >
+        Copy
+      </Button>
+    </div>
+    <pre className="text-sm text-gray-100 overflow-x-auto whitespace-pre-wrap">
+      <code>{code}</code>
+    </pre>
+  </div>
+);
+
+const ImageModal = ({ imageUrl, onClose }: { imageUrl: string; onClose: () => void }) => (
+  <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={onClose}>
+    <div className="relative max-w-4xl max-h-4xl p-4">
+      <Button
+        onClick={onClose}
+        variant="ghost"
+        size="icon"
+        className="absolute top-2 right-2 text-white hover:bg-gray-800 z-10"
+      >
+        <X className="w-6 h-6" />
+      </Button>
+      <img 
+        src={imageUrl} 
+        alt="Full screen view" 
+        className="max-w-full max-h-full object-contain rounded-lg"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  </div>
+);
+
+const AuthScreen = ({ onSignIn }: { onSignIn: () => void }) => {
+  const { toast } = useToast();
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      onSignIn();
+    } catch (error: any) {
+      console.error('Error during sign-in:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign in: " + error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-black text-white">
+      {/* Header */}
+      <header className="flex justify-center items-center p-4 bg-black/80 backdrop-blur-lg">
+        <div className="flex items-center gap-3">
+          <img 
+            src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
+            alt="nexora" 
+            className="w-8 h-8 md:w-10 md:h-10"
+          />
+          <div className="flex flex-col">
+            <div className="text-lg md:text-xl font-semibold text-white">nexora</div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1 flex items-center justify-center px-4">
+        <div className="flex flex-col lg:flex-row items-center justify-center gap-6 md:gap-10 max-w-6xl w-full">
+          {/* Left Section */}
+          <div className="flex-1 max-w-2xl text-center lg:text-left">
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-semibold leading-tight mb-6 md:mb-8">
+              <span className="block mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                You command a constellation.
+              </span>
+              <span className="block bg-gradient-to-r from-pink-400 to-purple-500 bg-clip-text text-transparent">
+                Sign in. Rewrite what's possible.
+              </span>
+            </h1>
+          </div>
+
+          {/* Right Section */}
+          <div className="flex flex-col gap-4 w-full max-w-sm">
+            <button 
+              onClick={handleGoogleSignIn}
+              className="flex items-center justify-center gap-3 p-4 border border-white/20 rounded-3xl bg-white/5 hover:bg-blue-500/10 hover:border-blue-500/40 transition-all duration-200 text-white"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              <span className="text-sm md:text-base">Sign in with Google</span>
+            </button>
+
+            <p className="text-xs text-gray-400 text-center mt-4 leading-relaxed px-2">
+              By signing up, I agree to the nexora<br/>
+              <a href="https://coreastarstroupe.netlify.app/privacy-policy" className="text-purple-400 hover:text-purple-300">privacy policy</a> and <a href="https://coreastarstroupe.netlify.app/terms-of-service" className="text-purple-400 hover:text-purple-300">terms of service</a>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="flex justify-center gap-6 md:gap-8 p-4 bg-white/5">
+        <a href="https://coreastarstroupe.netlify.app/privacy-policy" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Privacy</a>
+        <a href="https://coreastarstroupe.netlify.app/terms-of-service" className="text-sm text-gray-400 hover:text-purple-400 transition-colors">Terms</a>
+      </div>
+    </div>
+  );
+};
+
+export const ChatInterface = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [input, setInput] = useState('');
+  const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gpt-4');
-  const [showReasoningView, setShowReasoningView] = useState(false);
-  const [showEssayModal, setShowEssayModal] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
-  const [currentReasoning, setCurrentReasoning] = useState('');
-  const [currentEssay, setCurrentEssay] = useState('');
-  const [deleteConversationId, setDeleteConversationId] = useState<string | null>(null);
-  
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [essayModalOpen, setEssayModalOpen] = useState(false);
+  const [currentEssayContent, setCurrentEssayContent] = useState('');
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const { trackApiCall, trackModelUsage, stats } = useUsageTracking();
+  const [confirmDelete, setConfirmDelete] = useState<{
+    isOpen: boolean;
+    messageId?: string;
+    conversationId?: string;
+    type: 'message' | 'conversation';
+  }>({ isOpen: false, type: 'message' });
 
-  const models = [
-    { id: 'gpt-4', name: 'GPT-4' },
-    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' },
-    { id: 'claude-3', name: 'Claude 3' },
-  ];
-
-  // Load conversations and current conversation from localStorage on mount
+  // Add system theme detection
   useEffect(() => {
-    const savedConversations = localStorage.getItem(STORAGE_KEY);
-    const savedCurrentId = localStorage.getItem(CURRENT_CONVERSATION_KEY);
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     
-    if (savedConversations) {
-      const parsedConversations = JSON.parse(savedConversations).map((conv: any) => ({
-        ...conv,
-        timestamp: new Date(conv.timestamp),
-        messages: conv.messages.map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp)
-        }))
-      }));
-      setConversations(parsedConversations);
+    const handleThemeChange = (e: MediaQueryListEvent) => {
+      if (e.matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+
+    // Set initial theme
+    if (mediaQuery.matches) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
     }
-    
-    if (savedCurrentId && savedConversations) {
-      const parsedConversations = JSON.parse(savedConversations);
-      if (parsedConversations.some((conv: any) => conv.id === savedCurrentId)) {
-        setCurrentConversationId(savedCurrentId);
+
+    // Listen for changes
+    mediaQuery.addEventListener('change', handleThemeChange);
+
+    return () => mediaQuery.removeEventListener('change', handleThemeChange);
+  }, []);
+
+  // Load conversations from localStorage on component mount
+  useEffect(() => {
+    const saved = localStorage.getItem('nexora-conversations');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setConversations(parsed.map((conv: any) => ({
+          ...conv,
+          timestamp: new Date(conv.timestamp),
+          messages: conv.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+          }))
+        })));
+      } catch (error) {
+        console.error('Error loading conversations:', error);
       }
     }
   }, []);
 
-  // Save conversations to localStorage whenever they change
+  // Save conversations to localStorage whenever conversations change
   useEffect(() => {
     if (conversations.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
+      localStorage.setItem('nexora-conversations', JSON.stringify(conversations));
     }
   }, [conversations]);
 
-  // Save current conversation ID whenever it changes
+  // Auto-scroll to bottom
   useEffect(() => {
-    if (currentConversationId) {
-      localStorage.setItem(CURRENT_CONVERSATION_KEY, currentConversationId);
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-  }, [currentConversationId]);
+  }, [messages]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  // Firebase auth listener
   useEffect(() => {
-    scrollToBottom();
-  }, [conversations, currentConversationId]);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        setUser({
+          displayName: firebaseUser.displayName || 'User',
+          email: firebaseUser.email || '',
+          photoURL: firebaseUser.photoURL || ''
+        });
+      } else {
+        setUser(null);
+      }
+      setAuthLoading(false);
+    });
 
-  const generateConversationTitle = (firstMessage: string): string => {
-    const words = firstMessage.split(' ').slice(0, 6);
-    return words.join(' ') + (firstMessage.split(' ').length > 6 ? '...' : '');
-  };
+    return () => unsubscribe();
+  }, []);
 
-  const getCurrentConversation = (): Conversation | undefined => {
-    return conversations.find(conv => conv.id === currentConversationId);
-  };
+  // Clipboard paste support
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
 
-  const handleSendMessage = async (content: string, attachments?: File[]) => {
-    if (!content.trim() && !attachments?.length) return;
-
-    let conversationId = currentConversationId;
-    
-    // Create new conversation if none exists
-    if (!conversationId) {
-      conversationId = Date.now().toString();
-      const newConversation: Conversation = {
-        id: conversationId,
-        title: generateConversationTitle(content),
-        lastMessage: content,
-        timestamp: new Date(),
-        messageCount: 0,
-        messages: []
-      };
-      
-      setConversations(prev => [newConversation, ...prev]);
-      setCurrentConversationId(conversationId);
-    }
-
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content,
-      sender: 'user',
-      timestamp: new Date()
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          const blob = item.getAsFile();
+          if (blob) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              setUploadedImage(e.target?.result as string);
+            };
+            reader.readAsDataURL(blob);
+          }
+        }
+      }
     };
 
-    setConversations(prev => 
-      prev.map(conv => 
-        conv.id === conversationId 
-          ? { 
-              ...conv, 
-              messages: [...conv.messages, userMessage],
-              lastMessage: content,
-              timestamp: new Date(),
-              messageCount: conv.messageCount + 1
-            }
-          : conv
-      )
-    );
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, []);
+
+  const detectEssayRequest = (content: string) => {
+    const essayPatterns = [
+      /\b(essay|write|composition|paper|article|report|analysis)\b/i,
+      /\b(explain|describe|discuss|analyze|compare|contrast)\b.*\b(essay|paper|article)\b/i,
+      /\bwrite\s+(about|on|an?\s+essay)\b/i
+    ];
+    return essayPatterns.some(pattern => pattern.test(content));
+  };
+
+  const extractCodeBlocks = (content: string) => {
+    const codeBlockRegex = /```(?:\w+\n)?([\s\S]*?)```/g;
+    const matches = [...content.matchAll(codeBlockRegex)];
+    return matches.map(match => match[1].trim());
+  };
+
+  const removeCodeBlocksFromContent = (content: string) => {
+    return content.replace(/```(?:\w+\n)?[\s\S]*?```/g, '').trim();
+  };
+
+  const createNewConversation = () => {
+    const newId = Date.now().toString();
+    const newConversation: Conversation = {
+      id: newId,
+      title: 'New Conversation',
+      lastMessage: '',
+      timestamp: new Date(),
+      messageCount: 0,
+      messages: []
+    };
+    
+    setConversations(prev => [newConversation, ...prev]);
+    setCurrentConversationId(newId);
+    setMessages([]);
+  };
+
+  const updateConversation = (messages: Message[]) => {
+    if (!currentConversationId) return;
+
+    setConversations(prev => prev.map(conv => {
+      if (conv.id === currentConversationId) {
+        const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+        return {
+          ...conv,
+          title: lastUserMessage?.content.slice(0, 50) + (lastUserMessage?.content.length > 50 ? '...' : '') || 'New Conversation',
+          lastMessage: messages[messages.length - 1]?.content.slice(0, 100) || '',
+          timestamp: new Date(),
+          messageCount: messages.length,
+          messages
+        };
+      }
+      return conv;
+    }));
+  };
+
+  const loadConversation = (conversationId: string) => {
+    const conversation = conversations.find(c => c.id === conversationId);
+    if (conversation) {
+      setCurrentConversationId(conversationId);
+      setMessages(conversation.messages);
+    }
+  };
+
+  const handleDeleteConversation = (conversationId: string) => {
+    setConfirmDelete({
+      isOpen: true,
+      conversationId,
+      type: 'conversation'
+    });
+  };
+
+  const sendMessage = async (messageContent?: string) => {
+    const contentToSend = messageContent || input;
+    if (!contentToSend.trim() && !uploadedImage) return;
+
+    // Create new conversation if none exists
+    if (!currentConversationId) {
+      createNewConversation();
+    }
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: contentToSend,
+      imageUrl: uploadedImage || undefined,
+      timestamp: new Date(),
+    };
+
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
+    setInput('');
+    setUploadedImage(null);
+
+    // Check if it's a Wikipedia search result
+    const isWikipediaResult = contentToSend.startsWith('Wikipedia search results for');
+    
+    if (isWikipediaResult) {
+      // For Wikipedia results, just add the message without API call
+      updateConversation(newMessages);
+      return;
+    }
+
+    const isEssayRequest = detectEssayRequest(contentToSend);
+    const isReasoningModel = selectedModel === 'qwen-qwq-32b';
 
     setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: `I'm Nexora, an AI assistant created by Ron Asnahon from Corea Starstroupe in 2023. I'm here to help you with your questions and tasks. How can I assist you today?`,
-        sender: 'ai',
-        timestamp: new Date(),
-        reasoning: 'This is sample reasoning for the AI response.',
-        essay: 'This is a sample essay content that can be expanded and edited.'
-      };
+    try {
+      trackApiCall(selectedModel);
 
-      setConversations(prev => 
-        prev.map(conv => 
-          conv.id === conversationId 
-            ? { 
-                ...conv, 
-                messages: [...conv.messages, aiMessage],
-                lastMessage: aiMessage.content,
-                timestamp: new Date(),
-                messageCount: conv.messageCount + 1
-              }
-            : conv
-        )
-      );
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: selectedModel,
+          messages: [
+            {
+              role: 'user',
+              content: uploadedImage 
+                ? [
+                    { type: 'text', text: contentToSend },
+                    { type: 'image_url', image_url: { url: uploadedImage } }
+                  ]
+                : contentToSend
+            }
+          ],
+          max_tokens: isEssayRequest ? 2000 : 1000,
+          temperature: 0.7,
+        }),
+      });
 
-      setIsLoading(false);
-    }, 2000);
-  };
+      if (!response.ok) {
+        throw new Error(`API responded with status ${response.status}`);
+      }
 
-  const handleNewConversation = () => {
-    setCurrentConversationId(null);
-    localStorage.removeItem(CURRENT_CONVERSATION_KEY);
-    setSidebarOpen(false);
-  };
+      const data = await response.json();
+      let responseContent = data.choices[0].message.content;
+      let reasoning = '';
 
-  const handleSelectConversation = (id: string) => {
-    setCurrentConversationId(id);
-    setSidebarOpen(false);
-  };
-
-  const handleDeleteConversation = (id: string) => {
-    setDeleteConversationId(id);
-  };
-
-  const confirmDelete = () => {
-    if (deleteConversationId) {
-      setConversations(prev => prev.filter(conv => conv.id !== deleteConversationId));
-      
-      if (currentConversationId === deleteConversationId) {
-        setCurrentConversationId(null);
-        localStorage.removeItem(CURRENT_CONVERSATION_KEY);
+      // Extract reasoning for QwQ model
+      if (isReasoningModel && responseContent.includes('<think>')) {
+        const thinkMatch = responseContent.match(/<think>([\s\S]*?)<\/think>/);
+        if (thinkMatch) {
+          reasoning = thinkMatch[1].trim();
+          responseContent = responseContent.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+        }
       }
       
-      setDeleteConversationId(null);
+      trackModelUsage(selectedModel);
+
+      if (isEssayRequest && responseContent.length > 500) {
+        setCurrentEssayContent(responseContent);
+        setEssayModalOpen(true);
+        
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: responseContent,
+          isEssay: true,
+          reasoning,
+          timestamp: new Date(),
+        };
+        
+        const updatedMessages = [...newMessages, assistantMessage];
+        setMessages(updatedMessages);
+        updateConversation(updatedMessages);
+      } else {
+        const codeBlocks = extractCodeBlocks(responseContent);
+        const cleanContent = removeCodeBlocksFromContent(responseContent);
+        
+        const messagesToAdd: Message[] = [];
+        
+        if (cleanContent.trim()) {
+          messagesToAdd.push({
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: cleanContent,
+            reasoning,
+            timestamp: new Date(),
+          });
+        }
+
+        if (codeBlocks.length > 0) {
+          codeBlocks.forEach((code, index) => {
+            messagesToAdd.push({
+              id: (Date.now() + 2 + index).toString(),
+              role: 'assistant',
+              content: code,
+              isCode: true,
+              timestamp: new Date(),
+            });
+          });
+        }
+
+        const updatedMessages = [...newMessages, ...messagesToAdd];
+        setMessages(updatedMessages);
+        updateConversation(updatedMessages);
+      }
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleShowReasoning = (reasoning: string) => {
-    setCurrentReasoning(reasoning);
-    setShowReasoningView(true);
+  const regenerateResponse = async (messageId: string) => {
+    const messageIndex = messages.findIndex(m => m.id === messageId);
+    if (messageIndex === -1) return;
+
+    // Find the last user message before this assistant message
+    const precedingMessages = messages.slice(0, messageIndex);
+    const lastUserMessage = precedingMessages.filter(m => m.role === 'user').pop();
+    
+    if (!lastUserMessage) return;
+
+    // Remove the assistant message and any following messages
+    const newMessages = messages.slice(0, messageIndex);
+    setMessages(newMessages);
+    
+    // Resend the user message
+    await sendMessage(lastUserMessage.content);
   };
 
-  const handleViewEssay = (essay: string) => {
-    setCurrentEssay(essay);
-    setShowEssayModal(true);
+  const deleteMessage = (messageId: string) => {
+    setConfirmDelete({
+      isOpen: true,
+      messageId,
+      type: 'message'
+    });
   };
 
-  const currentConversation = getCurrentConversation();
-  const messages = currentConversation?.messages || [];
-
-  const user: User = {
-    displayName: 'Ron Asnahon',
-    email: 'ron@coreastarstroupe.com',
-    photoURL: '', // Provide empty string as fallback
-    company: 'Corea Starstroupe',
-    founded: '2023',
-    founder: 'Ron Asnahon',
-    location: 'Philippines'
+  const confirmDeleteMessage = () => {
+    if (confirmDelete.messageId) {
+      const newMessages = messages.filter(m => m.id !== confirmDelete.messageId);
+      setMessages(newMessages);
+      updateConversation(newMessages);
+    }
+    setConfirmDelete({ isOpen: false, type: 'message' });
   };
+
+  const confirmDeleteConversation = () => {
+    if (confirmDelete.conversationId) {
+      setConversations(prev => prev.filter(c => c.id !== confirmDelete.conversationId));
+      if (currentConversationId === confirmDelete.conversationId) {
+        setCurrentConversationId(null);
+        setMessages([]);
+      }
+    }
+    setConfirmDelete({ isOpen: false, type: 'conversation' });
+  };
+
+  const editMessage = (messageId: string, newContent: string) => {
+    if (editingMessageId === messageId) {
+      // Save the edit
+      const newMessages = messages.map(m => 
+        m.id === messageId ? { ...m, content: newContent } : m
+      );
+      setMessages(newMessages);
+      updateConversation(newMessages);
+      setEditingMessageId(null);
+    } else {
+      // Start editing
+      setEditingMessageId(messageId);
+    }
+  };
+
+  const handleImageUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setUploadedImage(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      setMessages([]);
+      setConversations([]);
+      setCurrentConversationId(null);
+      setShowProfile(false);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  const handleUpgradeClick = () => {
+    window.open('https://coreastarstroupe.netlify.app/pricing', '_blank');
+  };
+
+  if (authLoading) {
+    return <CustomLoader />;
+  }
+
+  if (!user) {
+    return <AuthScreen onSignIn={() => {}} />;
+  }
+
+  if (showProfile) {
+    return (
+      <div className="flex flex-col h-screen bg-black text-white">
+        <div className="flex items-center justify-between px-4 md:px-6 py-4 bg-black border-b border-gray-800">
+          <Button
+            onClick={() => setShowProfile(false)}
+            variant="ghost"
+            className="text-white hover:bg-gray-800"
+          >
+            ← Back to Chat
+          </Button>
+          <span className="text-lg md:text-xl font-medium">User Profile</span>
+          <div></div>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto">
+          <UserProfile user={user} />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-black text-white font-google-sans">
+      {/* Sidebar */}
       <ConversationSidebar
         conversations={conversations}
         currentConversationId={currentConversationId}
-        onSelectConversation={handleSelectConversation}
-        onNewConversation={handleNewConversation}
+        onSelectConversation={loadConversation}
+        onNewConversation={createNewConversation}
         onDeleteConversation={handleDeleteConversation}
         onShowProfile={() => setShowProfile(true)}
         isOpen={sidebarOpen}
@@ -260,130 +707,245 @@ export const ChatInterface: React.FC = () => {
         user={user}
         selectedModel={selectedModel}
         onModelChange={setSelectedModel}
-        models={models}
+        models={MODELS}
       />
-
-      <div className="flex-1 flex flex-col">
+      
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black">
+          <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
             <Button
+              onClick={() => setSidebarOpen(true)}
               variant="ghost"
               size="sm"
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden"
+              className="text-white hover:bg-gray-800 lg:hidden"
             >
-              <Menu className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4" />
             </Button>
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Bot className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="font-semibold text-gray-900">Nexora</h1>
-                <p className="text-xs text-gray-500">AI Assistant</p>
-              </div>
+            
+            <div className="flex items-center space-x-2 md:space-x-3">
+              <img 
+                src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
+                alt="nexora" 
+                className="w-6 h-6 md:w-8 md:h-8 flex-shrink-0"
+              />
+              <span className="text-lg md:text-xl font-medium text-white hidden sm:block">nexora</span>
             </div>
           </div>
-        </header>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="max-w-4xl mx-auto space-y-6">
-            {messages.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Bot className="w-8 h-8 text-white" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">Welcome to Nexora</h2>
-                <p className="text-gray-600 mb-6">I'm your AI assistant, created by Ron Asnahon from Corea Starstroupe. How can I help you today?</p>
-              </div>
-            ) : (
-              messages.map((message) => (
-                <div key={message.id} className={`flex gap-4 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  {message.sender === 'ai' && (
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Bot className="w-4 h-4 text-white" />
-                    </div>
-                  )}
-                  
-                  <div className={`max-w-3xl ${message.sender === 'user' ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200'} rounded-2xl px-4 py-3`}>
-                    <div className="prose prose-sm max-w-none">
-                      {message.isLoading ? (
-                        <AITextLoading />
-                      ) : (
-                        <p className={message.sender === 'user' ? 'text-white' : 'text-gray-900'}>{message.content}</p>
-                      )}
-                    </div>
-                    
-                    {message.sender === 'ai' && !message.isLoading && (
-                      <MessageActions
-                        content={message.content}
-                        messageId={message.id}
-                      />
-                    )}
+          <div className="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
+            <Button
+              onClick={handleUpgradeClick}
+              variant="outline"
+              size="sm"
+              className="border-purple-500 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 text-xs md:text-sm px-2 md:px-4"
+            >
+              <Zap className="w-3 h-3 mr-1" />
+              Upgrade
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center space-x-1 md:space-x-2 hover:bg-gray-800 p-1 md:p-2">
+                  <Avatar className="w-6 h-6 md:w-8 md:h-8">
+                    <AvatarImage src={user.photoURL} alt={user.displayName} />
+                    <AvatarFallback className="bg-purple-600 text-white text-xs md:text-sm">
+                      {user.displayName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-white text-sm md:text-base hidden md:block">{user.displayName}</span>
+                  <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white z-50" align="end">
+                <DropdownMenuItem className="flex items-center space-x-2 hover:bg-gray-800">
+                  <Avatar className="w-6 h-6">
+                    <AvatarImage src={user.photoURL} alt={user.displayName} />
+                    <AvatarFallback className="bg-purple-600 text-white text-xs">
+                      {user.displayName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{user.displayName}</span>
+                    <span className="text-xs text-gray-400">{user.email}</span>
                   </div>
-
-                  {message.sender === 'user' && (
-                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
-                      <UserIcon className="w-4 h-4 text-gray-600" />
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-            
-            {isLoading && (
-              <div className="flex gap-4 justify-start">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-4 h-4 text-white" />
-                </div>
-                <div className="max-w-3xl bg-white border border-gray-200 rounded-2xl px-4 py-3">
-                  <AITextLoading />
-                </div>
-              </div>
-            )}
-            
-            <div ref={messagesEndRef} />
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setShowProfile(true)}
+                  className="flex items-center space-x-2 hover:bg-gray-800"
+                >
+                  <User className="w-4 h-4" />
+                  <span>View Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={handleSignOut}
+                  className="flex items-center space-x-2 hover:bg-gray-800 text-red-400"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
-        {/* Input */}
-        <AIPromptInput
-          onSendMessage={handleSendMessage}
-          isLoading={isLoading}
-          placeholder="Message Nexora..."
-        />
+        {/* Messages or Initial State */}
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {messages.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center px-4">
+              <div className="text-center">
+                <h1 className="text-2xl md:text-4xl font-light text-white mb-6 md:mb-8">
+                  What do you want to know, <span className="text-purple-400">{user.displayName}</span>?
+                </h1>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide" ref={scrollAreaRef}>
+              <div className="max-w-3xl mx-auto py-4 space-y-4 md:space-y-6">
+                {messages.map((message) => (
+                  <div key={message.id} className="group">
+                    {message.role === 'user' ? (
+                      <div className="flex justify-end mb-2">
+                        <div className="max-w-[85%] md:max-w-xs lg:max-w-md bg-gray-800 text-white rounded-2xl px-3 md:px-4 py-3">
+                          {message.imageUrl && (
+                            <img 
+                              src={message.imageUrl} 
+                              alt="Uploaded" 
+                              className="max-w-full rounded-lg mb-2"
+                            />
+                          )}
+                          <p className="text-sm leading-relaxed">{message.content}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <motion.div 
+                        className="max-w-[95%] md:max-w-2xl mb-2"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                      >
+                        <ReasoningView 
+                          reasoning={message.reasoning || ''} 
+                          isVisible={selectedModel === 'qwen-qwq-32b' && !!message.reasoning}
+                        />
+                        
+                        {message.isCode ? (
+                          <CodeCanvas code={message.content} />
+                        ) : message.isEssay ? (
+                          <div className="bg-gray-900 rounded-lg p-3 md:p-4 my-3 border border-gray-700">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="text-xs text-gray-400 font-medium">Essay Generated</div>
+                              <Button
+                                onClick={() => {
+                                  setCurrentEssayContent(message.content);
+                                  setEssayModalOpen(true);
+                                }}
+                                size="sm"
+                                className="bg-purple-600 hover:bg-purple-700 h-6 md:h-7 px-2 text-xs"
+                              >
+                                Open in Editor
+                              </Button>
+                            </div>
+                            <div className="text-xs md:text-sm text-gray-300 line-clamp-4">
+                              {message.content.substring(0, 200)}...
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="text-white whitespace-pre-wrap text-sm leading-relaxed">
+                              <div 
+                                dangerouslySetInnerHTML={{ 
+                                  __html: formatMarkdown(message.content) 
+                                }} 
+                              />
+                            </div>
+                            {message.imageUrl && (
+                              <div className="mt-3">
+                                <img 
+                                  src={message.imageUrl} 
+                                  alt="Generated" 
+                                  className="max-w-full md:max-w-sm rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => setFullScreenImage(message.imageUrl!)}
+                                />
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </motion.div>
+                    )}
+                    
+                    <MessageActions
+                      content={message.content}
+                      messageId={message.id}
+                      onRegenerate={message.role === 'assistant' ? () => regenerateResponse(message.id) : undefined}
+                      onDelete={() => deleteMessage(message.id)}
+                      onEdit={(newContent) => editMessage(message.id, newContent)}
+                      isEditing={editingMessageId === message.id}
+                      onCancelEdit={() => setEditingMessageId(null)}
+                      isUser={message.role === 'user'}
+                    />
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <AnimatedLoader />
+                    </motion.div>
+                  </div>
+                )}
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none"></div>
+            </div>
+          )}
+        </div>
+
+        {/* Input Area */}
+        <div className="px-2 md:px-4 pb-4 md:pb-6 pt-2 bg-black">
+          <AIPromptInput
+            value={input}
+            onChange={setInput}
+            onSendMessage={() => sendMessage()}
+            onImageUpload={handleImageUpload}
+            disabled={isLoading}
+            uploadedImage={uploadedImage}
+            onRemoveImage={() => setUploadedImage(null)}
+          />
+        </div>
       </div>
 
-      {/* Modals */}
-      <ConfirmDialog
-        isOpen={!!deleteConversationId}
-        onClose={() => setDeleteConversationId(null)}
-        onConfirm={confirmDelete}
-        title="Delete Conversation"
-        description="Are you sure you want to delete this conversation? This action cannot be undone."
+      <EssayModal
+        isOpen={essayModalOpen}
+        onClose={() => setEssayModalOpen(false)}
+        content={currentEssayContent}
+        onContentChange={setCurrentEssayContent}
+        title="Essay Editor"
       />
 
-      {showEssayModal && (
-        <EssayModal
-          isOpen={showEssayModal}
-          onClose={() => setShowEssayModal(false)}
-          content={currentEssay}
-          onContentChange={() => {}}
+      {fullScreenImage && (
+        <ImageModal 
+          imageUrl={fullScreenImage} 
+          onClose={() => setFullScreenImage(null)} 
         />
       )}
 
-      {showReasoningView && (
-        <ReasoningView
-          reasoning={currentReasoning}
-          isVisible={showReasoningView}
-        />
-      )}
-
-      {showProfile && (
-        <UserProfile user={user} />
-      )}
+      <ConfirmDialog
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete({ isOpen: false, type: 'message' })}
+        onConfirm={confirmDelete.type === 'message' ? confirmDeleteMessage : confirmDeleteConversation}
+        title={confirmDelete.type === 'message' ? "Delete Message" : "Delete Conversation"}
+        description={
+          confirmDelete.type === 'message' 
+            ? "Are you sure you want to delete this message? This action cannot be undone."
+            : "Are you sure you want to delete this conversation? All messages will be permanently removed."
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 };

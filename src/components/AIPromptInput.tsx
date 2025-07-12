@@ -1,126 +1,270 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { useAutoResizeTextarea } from '@/hooks/use-auto-resize-textarea';
+import React, { useState, useRef } from 'react';
+import { Globe, Paperclip, Send } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
+import WikipediaLoader from './WikipediaLoader';
 
 interface AIPromptInputProps {
-  onSendMessage: (message: string, attachments?: File[]) => void;
-  isLoading?: boolean;
-  placeholder?: string;
+  value: string;
+  onChange: (value: string) => void;
+  onSendMessage: () => void;
+  onImageUpload: (file: File) => void;
+  disabled?: boolean;
+  uploadedImage?: string | null;
+  onRemoveImage?: () => void;
 }
 
-export const AIPromptInput: React.FC<AIPromptInputProps> = ({
+interface WikipediaResult {
+  title: string;
+  snippet: string;
+  pageid: number;
+}
+
+const AIPromptInput: React.FC<AIPromptInputProps> = ({
+  value,
+  onChange,
   onSendMessage,
-  isLoading = false,
-  placeholder = "Message Nexora...",
+  onImageUpload,
+  disabled = false,
+  uploadedImage,
+  onRemoveImage,
 }) => {
-  const [message, setMessage] = useState('');
-  const [attachments, setAttachments] = useState<File[]>([]);
+  const { textareaRef, adjustHeight } = useAutoResizeTextarea({
+    minHeight: 52,
+    maxHeight: 200,
+  });
+  const [showSearch, setShowSearch] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<WikipediaResult[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { textareaRef, adjustHeight } = useAutoResizeTextarea({ 
-    minHeight: 24, 
-    maxHeight: 200 
-  });
+  const handleSubmit = () => {
+    if (!value.trim()) return;
+    
+    if (showSearch) {
+      handleWikipediaSearch();
+    } else {
+      onSendMessage();
+    }
+    adjustHeight(true);
+  };
 
-  useEffect(() => {
-    adjustHeight();
-  }, [message, adjustHeight]);
+  const handleWikipediaSearch = async () => {
+    if (!value.trim()) return;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (message.trim() || attachments.length > 0) {
-      onSendMessage(message.trim(), attachments);
-      setMessage('');
-      setAttachments([]);
-      adjustHeight(true); // Reset height
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&origin=*&srsearch=${encodeURIComponent(value)}&srlimit=3`
+      );
+      const data = await response.json();
+      
+      if (data.query && data.query.search) {
+        setSearchResults(data.query.search);
+        // Format the results and send as a message
+        const formattedResults = data.query.search.map((result: any) => 
+          `**${result.title}**: ${result.snippet.replace(/<[^>]*>/g, '')}`
+        ).join('\n\n');
+        
+        onChange(`Wikipedia search results for "${value}":\n\n${formattedResults}`);
+        onSendMessage();
+      }
+    } catch (error) {
+      console.error('Wikipedia search error:', error);
+      onChange(`Sorry, I couldn't search Wikipedia for "${value}". Please try again.`);
+      onSendMessage();
+    } finally {
+      setIsSearching(false);
+      setSearchResults([]);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
+  const handleFocus = () => {
+    setIsFocused(true);
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+  };
+
+  const handleContainerClick = () => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setAttachments(prev => [...prev, ...files]);
-  };
-
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const triggerFileInput = () => {
+  const handleImageUploadClick = () => {
     fileInputRef.current?.click();
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      onImageUpload(file);
+    }
+  };
+
+  if (isSearching) {
+    return (
+      <div className="w-full py-4">
+        <div className="relative max-w-2xl w-full mx-auto">
+          <WikipediaLoader />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="border-t border-gray-200 bg-white p-4">
-      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-        {/* Attachments */}
-        {attachments.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2">
-            {attachments.map((file, index) => (
-              <div key={index} className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2 text-sm">
-                <Paperclip className="w-4 h-4 text-gray-500" />
-                <span className="truncate max-w-[200px]">{file.name}</span>
-                <button
-                  type="button"
-                  onClick={() => removeAttachment(index)}
-                  className="text-gray-500 hover:text-red-500 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
+    <div className="w-full py-4">
+      <div className="relative max-w-2xl w-full mx-auto">
+        {/* Uploaded Image Preview */}
+        {uploadedImage && (
+          <div className="mb-3 relative inline-block">
+            <img 
+              src={uploadedImage} 
+              alt="Uploaded" 
+              className="max-w-32 max-h-32 rounded-lg border border-gray-700"
+            />
+            <button 
+              onClick={onRemoveImage}
+              className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+            >
+              ×
+            </button>
           </div>
         )}
 
-        <div className="relative flex items-end gap-3 bg-gray-50 rounded-2xl border border-gray-200 p-3 focus-within:border-blue-500 transition-colors">
-          <button
-            type="button"
-            onClick={triggerFileInput}
-            className="flex-shrink-0 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            disabled={isLoading}
-          >
-            <Paperclip className="w-5 h-5" />
-          </button>
+        <div
+          role="textbox"
+          tabIndex={0}
+          aria-label="Search input container"
+          className={cn(
+            "relative flex flex-col rounded-xl transition-all duration-200 w-full text-left cursor-text",
+            "ring-1 ring-white/10",
+            isFocused && "ring-white/20"
+          )}
+          onClick={handleContainerClick}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              handleContainerClick();
+            }
+          }}
+        >
+          <div className="overflow-y-auto max-h-[200px]">
+            <Textarea
+              value={value}
+              placeholder={showSearch ? "Search the web..." : "Ask nexora anything..."}
+              className="w-full rounded-xl rounded-b-none px-4 py-3 bg-white/5 border-none text-white placeholder:text-white/70 resize-none focus-visible:ring-0 leading-[1.2]"
+              ref={textareaRef}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              disabled={disabled}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+              onChange={(e) => {
+                onChange(e.target.value);
+                adjustHeight();
+              }}
+            />
+          </div>
 
-          <Textarea
-            ref={textareaRef}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={placeholder}
-            className="flex-1 resize-none border-0 bg-transparent p-0 text-base placeholder-gray-500 focus-visible:ring-0 min-h-[24px] max-h-[200px]"
-            disabled={isLoading}
-            rows={1}
-          />
-
-          <Button
-            type="submit"
-            size="sm"
-            disabled={isLoading || (!message.trim() && attachments.length === 0)}
-            className="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2 h-10"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
+          <div className="h-12 bg-white/5 rounded-b-xl">
+            <div className="absolute left-3 bottom-3 flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <label className="cursor-pointer rounded-lg p-2 bg-white/5">
+                <Paperclip 
+                  className="w-4 h-4 text-white/40 hover:text-white transition-colors" 
+                  onClick={handleImageUploadClick}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowSearch(!showSearch)}
+                className={cn(
+                  "rounded-full transition-all flex items-center gap-2 px-1.5 py-1 border h-8 cursor-pointer",
+                  showSearch
+                    ? "bg-sky-500/15 border-sky-400 text-sky-500"
+                    : "bg-white/5 border-transparent text-white/40 hover:text-white"
+                )}
+              >
+                <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                  <motion.div
+                    animate={{
+                      rotate: showSearch ? 180 : 0,
+                      scale: showSearch ? 1.1 : 1,
+                    }}
+                    whileHover={{
+                      rotate: showSearch ? 180 : 15,
+                      scale: 1.1,
+                      transition: {
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 10,
+                      },
+                    }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 260,
+                      damping: 25,
+                    }}
+                  >
+                    <Globe
+                      className={cn(
+                        "w-4 h-4",
+                        showSearch ? "text-sky-500" : "text-inherit"
+                      )}
+                    />
+                  </motion.div>
+                </div>
+                <AnimatePresence>
+                  {showSearch && (
+                    <motion.span
+                      initial={{ width: 0, opacity: 0 }}
+                      animate={{ width: "auto", opacity: 1 }}
+                      exit={{ width: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-sm overflow-hidden whitespace-nowrap text-sky-500 shrink-0"
+                    >
+                      Search
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </button>
+            </div>
+            <div className="absolute right-3 bottom-3">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={disabled || !value.trim()}
+                className={cn(
+                  "rounded-lg p-2 transition-colors",
+                  value.trim() && !disabled
+                    ? "bg-sky-500/15 text-sky-500"
+                    : "bg-white/5 text-white/40 cursor-not-allowed"
+                )}
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          onChange={handleFileChange}
-          className="hidden"
-          accept="image/*,.pdf,.doc,.docx,.txt"
-        />
-      </form>
+      </div>
     </div>
   );
 };
+
+export default AIPromptInput;
