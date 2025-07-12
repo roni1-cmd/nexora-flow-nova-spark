@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Menu, Bot, User as UserIcon, Copy, ThumbsUp, ThumbsDown, RotateCcw, MessageSquare, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -383,10 +382,7 @@ export const ChatInterface: React.FC = () => {
       )}
 
       {showProfile && (
-        <UserProfile
-          user={user}
-          onClose={() => setShowProfile(false)}
-        />
+        <UserProfile user={user} />
       )}
     </div>
   );
