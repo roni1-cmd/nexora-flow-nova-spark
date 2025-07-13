@@ -18,18 +18,6 @@ export const useConversations = (userId: string | undefined) => {
     
     setLoading(true);
     try {
-      // Set Firebase user ID in the JWT claims for RLS
-      await supabase.rpc('set_claim', { 
-        uid: userId, 
-        claim: 'sub', 
-        value: userId 
-      }).catch(() => {
-        // Fallback: set the user context manually
-        supabase.auth.getSession().then(() => {
-          // This ensures the session is properly set
-        });
-      });
-
       const { data: conversationsData, error: conversationsError } = await supabase
         .from('conversations')
         .select(`
