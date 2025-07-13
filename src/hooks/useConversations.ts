@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, setFirebaseUserContext } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
 type Conversation = Database['public']['Tables']['conversations']['Row'] & {
@@ -18,6 +18,9 @@ export const useConversations = (userId: string | undefined) => {
     
     setLoading(true);
     try {
+      // Set Firebase user context for RLS
+      await setFirebaseUserContext(userId);
+
       const { data: conversationsData, error: conversationsError } = await supabase
         .from('conversations')
         .select(`
@@ -40,6 +43,8 @@ export const useConversations = (userId: string | undefined) => {
     if (!userId) return null;
 
     try {
+      await setFirebaseUserContext(userId);
+
       const { data, error } = await supabase
         .from('conversations')
         .insert({
@@ -61,7 +66,11 @@ export const useConversations = (userId: string | undefined) => {
   };
 
   const addMessage = async (conversationId: string, message: Omit<Message, 'id' | 'created_at'>) => {
+    if (!userId) return null;
+
     try {
+      await setFirebaseUserContext(userId);
+
       const { data, error } = await supabase
         .from('messages')
         .insert({
@@ -93,7 +102,11 @@ export const useConversations = (userId: string | undefined) => {
   };
 
   const deleteConversation = async (conversationId: string) => {
+    if (!userId) return;
+
     try {
+      await setFirebaseUserContext(userId);
+
       const { error } = await supabase
         .from('conversations')
         .delete()
