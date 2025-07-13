@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { User as SupabaseUser } from '@supabase/supabase-js';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { UserProfile } from './UserProfile';
 import { EssayCanvas } from './EssayCanvas';
 import { EssayModal } from './EssayModal';
@@ -25,6 +26,21 @@ import AnimatedLoader from './AnimatedLoader';
 import DynamicText from './DynamicText';
 import { FadeInText } from './FadeInText';
 import { motion } from 'framer-motion';
+
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyB123456789", // You'll need to replace this with your actual config
+  authDomain: "your-project.firebaseapp.com",
+  projectId: "your-project-id",
+  storageBucket: "your-project.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "your-app-id"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
 interface Message {
   id: string;
@@ -118,12 +134,11 @@ const AuthScreen = () => (
         <div className="space-y-4">
           <button 
             onClick={async () => {
-              await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                  redirectTo: `${window.location.origin}/`
-                }
-              });
+              try {
+                await signInWithPopup(auth, googleProvider);
+              } catch (error) {
+                console.error('Error signing in with Google:', error);
+              }
             }}
             className="w-full flex items-center justify-center gap-3 p-3 border border-gray-700 rounded-lg bg-black hover:bg-gray-900 transition-all duration-200 text-white mb-4 text-sm sm:text-base"
           >
@@ -156,7 +171,7 @@ const AuthScreen = () => (
 );
 
 const ChatInterface = () => {
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
@@ -182,7 +197,7 @@ const ChatInterface = () => {
     type: 'message' | 'conversation';
   }>({ isOpen: false, type: 'message' });
 
-  const { conversations, createConversation, addMessage, deleteConversation } = useConversations(user?.id);
+  const { conversations, createConversation, addMessage, deleteConversation } = useConversations(user?.uid);
 
   // Get first name only
   const getFirstName = (fullName: string) => {
@@ -190,17 +205,12 @@ const ChatInterface = () => {
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
       setAuthLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setAuthLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => unsubscribe();
   }, []);
 
   // Load current conversation messages
@@ -381,13 +391,13 @@ const ChatInterface = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-1 md:space-x-2 hover:bg-gray-800 p-1 md:p-2">
                   <Avatar className="w-6 h-6 md:w-8 md:h-8">
-                    <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name || user.email} />
+                    <AvatarImage src={user.photoURL || ''} alt={user.displayName || user.email || ''} />
                     <AvatarFallback className="bg-purple-600 text-white text-xs md:text-sm">
-                      {(user.user_metadata?.full_name || user.email || 'U').charAt(0)}
+                      {(user.displayName || user.email || 'U').charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-white text-sm md:text-base hidden md:block">
-                    {getFirstName(user.user_metadata?.full_name || user.email || 'User')}
+                    {getFirstName(user.displayName || user.email || 'User')}
                   </span>
                   <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
                 </Button>
@@ -395,19 +405,19 @@ const ChatInterface = () => {
               <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white z-50" align="end">
                 <DropdownMenuItem className="flex items-center space-x-2 hover:bg-gray-800">
                   <Avatar className="w-6 h-6">
-                    <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name || user.email} />
+                    <AvatarImage src={user.photoURL || ''} alt={user.displayName || user.email || ''} />
                     <AvatarFallback className="bg-purple-600 text-white text-xs">
-                      {(user.user_metadata?.full_name || user.email || 'U').charAt(0)}
+                      {(user.displayName || user.email || 'U').charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <span className="font-medium">{user.user_metadata?.full_name || user.email}</span>
+                    <span className="font-medium">{user.displayName || user.email}</span>
                     <span className="text-xs text-gray-400">{user.email}</span>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={async () => {
-                    await supabase.auth.signOut();
+                    await signOut(auth);
                     setMessages([]);
                     setCurrentConversationId(null);
                     setShowProfile(false);
@@ -430,7 +440,7 @@ const ChatInterface = () => {
                   <DynamicText />
                   <span className="text-2xl md:text-4xl font-light text-white ml-2">
                     <span className="text-purple-400">
-                      {getFirstName(user.user_metadata?.full_name || user.email || 'User')}
+                      {getFirstName(user.displayName || user.email || 'User')}
                     </span>
                   </span>
                 </div>
@@ -514,9 +524,9 @@ const ChatInterface = () => {
       {showProfile && (
         <UserProfile 
           user={{
-            displayName: user.user_metadata?.full_name || user.email || 'User',
+            displayName: user.displayName || user.email || 'User',
             email: user.email || '',
-            photoURL: user.user_metadata?.avatar_url || '',
+            photoURL: user.photoURL || '',
           }}
         />
       )}
