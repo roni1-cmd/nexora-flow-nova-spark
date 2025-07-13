@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, X, ChevronDown, LogOut, User, Zap, Bot, ArrowLeft, MessageSquare, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -50,14 +51,15 @@ interface Conversation {
 }
 
 const MODELS = [
-  { id: 'gemma2-9b-it', name: 'nexora node-X7' },
-  { id: 'llama-3.1-8b-instant', name: 'nexora orion-9' },
-  { id: 'llama-3.3-70b-versatile', name: 'nexora fract-01' },
-  { id: 'mistral-saba-24b', name: 'nexora cryptiq-32R' },
-  { id: 'qwen-qwq-32b', name: 'nexora Cortex-Cerebruc' },
+  { id: 'mistralai/mistral-small-3.2-24b-instruct:free', name: 'Mistral Small (Default)' },
+  { id: 'tngtech/deepseek-r1t2-chimera', name: 'DeepSeek R1T2 Chimera' },
+  { id: 'openrouter/cypher-alpha', name: 'Cypher Alpha' },
+  { id: 'deepseek/deepseek-r1-0528-qwen3-8b', name: 'DeepSeek R1 Qwen3' },
+  { id: 'sarvamai/sarvam-m', name: 'Sarvam-M (Reasoning)' },
+  { id: 'microsoft/mai-ds-r1', name: 'Microsoft MAI-DS R1' },
 ];
 
-const API_KEY = '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';
+const API_KEY = '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';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -106,42 +108,71 @@ const ImageModal = ({ imageUrl, onClose }: { imageUrl: string; onClose: () => vo
 
 // Enhanced Auth Screen Component
 const AuthScreen = () => (
-  <div className="flex flex-col h-screen bg-black text-white">
-    <header className="flex justify-center items-center p-6 bg-black">
-      <div className="flex items-center gap-3">
-        <img 
-          src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
-          alt="nexora" 
-          className="w-8 h-8 mr-3"
-        />
-        <span className="text-xl font-semibold text-white">nexora</span>
+  <div className="flex h-screen bg-black text-white font-google-sans">
+    <div className="flex-1 flex items-center justify-center" style={{
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)'
+    }}>
+      <div className="max-w-md p-8 text-center">
+        <h1 className="text-5xl font-bold mb-6 text-white">
+          Transform<br />
+          Your Business<br />
+          with AI
+        </h1>
+        <p className="text-xl text-white/90 leading-relaxed">
+          Build magical AI experiences with open models on the fastest and most reliable AI platform.
+        </p>
       </div>
-    </header>
+    </div>
     
-    <div className="flex-1 flex items-center justify-center px-4">
+    <div className="flex-1 flex items-center justify-center px-8">
       <div className="w-full max-w-md">
-        <div className="text-center mb-12">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <h1 className="text-4xl font-light text-white mb-4">Welcome back</h1>
-            <p className="text-gray-400 text-lg mb-8">You command a constellation. Sign In. Rewrite the possibilities.</p>
-          </motion.div>
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-8">
+            <img 
+              src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
+              alt="nexora" 
+              className="w-8 h-8"
+            />
+            <span className="text-xl font-semibold text-white">nexora</span>
+          </div>
           
+          <h2 className="text-3xl font-bold text-white mb-2">Log In</h2>
+        </div>
         
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+            <input 
+              type="email" 
+              className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="Enter your email"
+            />
+          </div>
+          
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-300">Password</label>
+              <a href="#" className="text-sm text-purple-400 hover:text-purple-300">Forgot Password?</a>
+            </div>
+            <input 
+              type="password" 
+              className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="Enter your password"
+            />
+          </div>
+          
+          <button className="w-full bg-white text-black p-3 rounded-lg font-medium hover:bg-gray-100 transition-colors">
+            Next
+          </button>
+          
+          <div className="text-center text-gray-400 my-4">OR</div>
+          
           <button 
             onClick={async () => {
               const provider = new GoogleAuthProvider();
               await signInWithPopup(auth, provider);
             }}
-            className="w-full flex items-center justify-center gap-3 p-4 border border-gray-700 rounded-lg bg-black hover:bg-gray-900 transition-all duration-200 text-white mb-6 shadow-lg"
+            className="w-full flex items-center justify-center gap-3 p-3 border border-gray-700 rounded-lg bg-black hover:bg-gray-900 transition-all duration-200 text-white mb-4"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -152,11 +183,20 @@ const AuthScreen = () => (
             <span className="font-medium">Continue with Google</span>
           </button>
           
-          <p className="text-xs text-gray-400 text-center leading-relaxed">
-            By signing up, I agree to the nexora<br/>
-            <a href="https://coreastarstroupe.netlify.app/privacy-policy" className="text-purple-400 hover:text-purple-300">privacy policy</a> and <a href="https://coreastarstroupe.netlify.app/terms-of-service" className="text-purple-400 hover:text-purple-300">terms of service</a>
+          <div className="text-center">
+            <span className="text-gray-400">Don't have an account? </span>
+            <a href="#" className="text-purple-400 hover:text-purple-300 font-medium">Sign Up</a>
+          </div>
+        </div>
+        
+        <div className="mt-8 text-center">
+          <p className="text-xs text-gray-400 leading-relaxed">
+            By signing up, you agree to our{' '}
+            <a href="https://coreastarstroupe.netlify.app/terms-of-service" className="text-purple-400 hover:text-purple-300">terms of service</a>{' '}
+            and{' '}
+            <a href="https://coreastarstroupe.netlify.app/privacy-policy" className="text-purple-400 hover:text-purple-300">Data Processing Agreement</a>
           </p>
-        </motion.div>
+        </div>
       </div>
     </div>
   </div>
@@ -299,7 +339,7 @@ const ChatInterface = () => {
     try {
       trackApiCall(selectedModel);
 
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${API_KEY}`,
@@ -322,6 +362,7 @@ const ChatInterface = () => {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: data.choices[0].message.content,
+        reasoning: selectedModel === 'sarvamai/sarvam-m' ? data.choices[0].message.reasoning : undefined,
         timestamp: new Date(),
       };
 
@@ -388,26 +429,28 @@ const ChatInterface = () => {
       <div className="flex-1 flex flex-col overflow-hidden transition-all duration-300 sm:ml-16 lg:ml-64">
         <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black">
           <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
-            <div className="flex items-center space-x-2 md:space-x-3">
-              <span className="text-lg md:text-xl font-medium text-white">nexora</span>
+            <div className="flex items-center gap-3">
+              <img 
+                src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
+                alt="nexora" 
+                className="w-8 h-8"
+              />
+              <Select value={selectedModel} onValueChange={setSelectedModel}>
+                <SelectTrigger className="w-48 bg-gray-900 border-gray-700 text-white text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border-gray-700 text-white">
+                  {MODELS.map((model) => (
+                    <SelectItem key={model.id} value={model.id} className="hover:bg-gray-800">
+                      {model.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           
           <div className="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
-            {/* Model Selector */}
-            <Select value={selectedModel} onValueChange={setSelectedModel}>
-              <SelectTrigger className="w-40 bg-gray-900 border-gray-700 text-white text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-700 text-white">
-                {MODELS.map((model) => (
-                  <SelectItem key={model.id} value={model.id} className="hover:bg-gray-800">
-                    {model.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-1 md:space-x-2 hover:bg-gray-800 p-1 md:p-2">
@@ -499,7 +542,7 @@ const ChatInterface = () => {
                       >
                         <ReasoningView 
                           reasoning={message.reasoning || ''} 
-                          isVisible={selectedModel === 'qwen-qwq-32b' && !!message.reasoning}
+                          isVisible={selectedModel === 'sarvamai/sarvam-m' && !!message.reasoning}
                         />
                         <div className="text-white whitespace-pre-wrap text-sm leading-relaxed">
                           <div 
