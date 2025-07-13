@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, X, ChevronDown, LogOut, User, Zap, Bot, ArrowLeft, MessageSquare, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -263,12 +264,12 @@ const ChatInterface = () => {
     return fullName.split(' ')[0];
   };
 
-  // Load current conversation messages - Fixed to handle race condition
+  // Load current conversation messages - Fixed to handle direct conversation updates
   useEffect(() => {
     console.log('Loading messages for conversation:', currentConversationId);
     console.log('Available conversations:', conversations);
     
-    if (currentConversationId && conversations.length > 0) {
+    if (currentConversationId) {
       const conversation = conversations.find(c => c.id === currentConversationId);
       console.log('Found conversation:', conversation);
       
@@ -279,7 +280,7 @@ const ChatInterface = () => {
         console.log('No messages found, setting empty array');
         setMessages([]);
       }
-    } else if (!currentConversationId) {
+    } else {
       console.log('No current conversation, clearing messages');
       setMessages([]);
     }
@@ -324,7 +325,7 @@ const ChatInterface = () => {
       console.log('Created new conversation:', conversationId);
     }
 
-    // Add user message
+    // Add user message and immediately update local state
     const userMessage = addMessage(conversationId, {
       role: 'user',
       content: contentToSend,
@@ -332,6 +333,12 @@ const ChatInterface = () => {
     });
 
     console.log('Added user message:', userMessage);
+
+    // Update messages immediately for better UX
+    const updatedConversation = conversations.find(c => c.id === conversationId);
+    if (updatedConversation) {
+      setMessages(updatedConversation.messages);
+    }
 
     // Clear input immediately
     setInput('');
@@ -371,6 +378,12 @@ const ChatInterface = () => {
       });
 
       console.log('Added assistant message:', assistantMessage);
+
+      // Update messages immediately for better UX
+      const finalConversation = conversations.find(c => c.id === conversationId);
+      if (finalConversation) {
+        setMessages(finalConversation.messages);
+      }
 
     } catch (error) {
       console.error('Error sending message:', error);
@@ -619,3 +632,4 @@ const ChatInterface = () => {
 };
 
 export default ChatInterface;
+
