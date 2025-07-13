@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, X, ChevronDown, LogOut, User, Zap, Bot, ArrowLeft, MessageSquare, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,7 @@ import { ReasoningView } from './ReasoningView';
 import { MessageActions } from './MessageActions';
 import { AppSidebar } from './AppSidebar';
 import { useUsageTracking } from '@/hooks/useUsageTracking';
-import { useConversations } from '@/hooks/useConversations';
+import { useLocalConversations, type Message } from '@/hooks/useLocalConversations';
 import AIPromptInput from './AIPromptInput';
 import AITextLoading from './AITextLoading';
 import CustomLoader from './CustomLoader';
@@ -29,7 +28,7 @@ import { motion } from 'framer-motion';
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCB1DwFSwQLDOlUFtWQtUvqOWPnI1HrP5E",
+  apiKey: "AIzaSyCB1DwFSwQLDOlUFtUvqOWPnI1HrP5E",
   authDomain: "messenger-7c40c.firebaseapp.com",
   projectId: "messenger-7c40c",
   storageBucket: "messenger-7c40c.firebasestorage.app",
@@ -42,17 +41,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  imageUrl?: string;
-  isCode?: boolean;
-  isEssay?: boolean;
-  reasoning?: string;
-  timestamp?: Date;
-}
 
 interface User {
   displayName: string;
@@ -198,7 +186,7 @@ const ChatInterface = () => {
     type: 'message' | 'conversation';
   }>({ isOpen: false, type: 'message' });
 
-  const { conversations, createConversation, addMessage, deleteConversation } = useConversations(user?.uid);
+  const { conversations, createConversation, addMessage, deleteConversation } = useLocalConversations();
 
   // Update document title based on conversation or user input
   useEffect(() => {
@@ -258,15 +246,7 @@ const ChatInterface = () => {
     if (currentConversationId) {
       const conversation = conversations.find(c => c.id === currentConversationId);
       if (conversation) {
-        const formattedMessages = conversation.messages.map(msg => ({
-          id: msg.id,
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content,
-          imageUrl: msg.image_url || undefined,
-          reasoning: msg.reasoning || undefined,
-          timestamp: new Date(msg.created_at),
-        }));
-        setMessages(formattedMessages);
+        setMessages(conversation.messages);
       }
     } else {
       setMessages([]);
@@ -288,38 +268,17 @@ const ChatInterface = () => {
 
     let conversationId = currentConversationId;
     
-    // Create new conversation if none exists
     if (!conversationId) {
-      const newConversation = await createConversation();
-      if (!newConversation) {
-        toast({
-          title: "Error",
-          description: "Failed to create conversation",
-          variant: "destructive",
-        });
-        return;
-      }
+      const newConversation = createConversation();
       conversationId = newConversation.id;
       setCurrentConversationId(conversationId);
     }
 
-    // Add user message to database
-    const userMessage = await addMessage(conversationId, {
-      conversation_id: conversationId,
+    const userMessage = addMessage(conversationId, {
       role: 'user',
       content: contentToSend,
-      image_url: uploadedImage || null,
-      reasoning: null,
+      imageUrl: uploadedImage || undefined,
     });
-
-    if (!userMessage) {
-      toast({
-        title: "Error",
-        description: "Failed to save message",
-        variant: "destructive",
-      });
-      return;
-    }
 
     setInput('');
     setUploadedImage(null);
@@ -345,13 +304,10 @@ const ChatInterface = () => {
       const assistantContent = data.choices[0].message.content;
       const reasoning = selectedModel === 'sarvamai/sarvam-m:free' ? data.choices[0].message.reasoning : null;
 
-      // Add assistant message to database
-      await addMessage(conversationId, {
-        conversation_id: conversationId,
+      addMessage(conversationId, {
         role: 'assistant',
         content: assistantContent,
-        image_url: null,
-        reasoning: reasoning,
+        reasoning: reasoning || undefined,
       });
 
     } catch (error) {
@@ -383,24 +339,15 @@ const ChatInterface = () => {
           lastMessage: conv.messages[conv.messages.length - 1]?.content || '',
           timestamp: new Date(conv.updated_at),
           messageCount: conv.messages.length,
-          messages: conv.messages.map(msg => ({
-            id: msg.id,
-            role: msg.role as 'user' | 'assistant',
-            content: msg.content,
-            imageUrl: msg.image_url || undefined,
-            reasoning: msg.reasoning || undefined,
-            timestamp: new Date(msg.created_at),
-          })),
+          messages: conv.messages,
         }))}
         currentConversationId={currentConversationId}
         onSelectConversation={(id) => {
           setCurrentConversationId(id);
         }}
-        onNewConversation={async () => {
-          const newConversation = await createConversation();
-          if (newConversation) {
-            setCurrentConversationId(newConversation.id);
-          }
+        onNewConversation={() => {
+          const newConversation = createConversation();
+          setCurrentConversationId(newConversation.id);
         }}
         onDeleteConversation={deleteConversation}
         isOpen={sidebarOpen}
@@ -474,7 +421,7 @@ const ChatInterface = () => {
         
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {messages.length === 0 ? (
-            <div className={`flex-1 flex items-center justify-center px-4 ${sidebarCollapsed ? 'mx-auto max-w-4xl' : ''}`}>
+            <div className="flex-1 flex items-center justify-center px-4">
               <div className="text-center">
                 <div className="flex items-center justify-center mb-6">
                   <DynamicText />
@@ -487,7 +434,7 @@ const ChatInterface = () => {
               </div>
             </div>
           ) : (
-            <div className={`flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide ${sidebarCollapsed ? 'mx-auto max-w-4xl' : ''}`} ref={scrollAreaRef}>
+            <div className="flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide" ref={scrollAreaRef}>
               <div className="max-w-3xl mx-auto py-4 space-y-4 md:space-y-6">
                 {messages.map((message) => (
                   <div key={message.id} className="group">
@@ -548,16 +495,18 @@ const ChatInterface = () => {
           )}
         </div>
         
-        <div className={`px-2 md:px-4 pb-4 md:pb-6 pt-2 bg-black relative z-10 ${sidebarCollapsed ? 'mx-auto max-w-4xl' : ''}`}>
-          <AIPromptInput
-            value={input}
-            onChange={setInput}
-            onSendMessage={sendMessage}
-            onImageUpload={handleImageUpload}
-            disabled={isLoading}
-            uploadedImage={uploadedImage}
-            onRemoveImage={() => setUploadedImage(null)}
-          />
+        <div className="px-2 md:px-4 pb-4 md:pb-6 pt-2 bg-black relative z-10">
+          <div className="max-w-4xl mx-auto">
+            <AIPromptInput
+              value={input}
+              onChange={setInput}
+              onSendMessage={sendMessage}
+              onImageUpload={handleImageUpload}
+              disabled={isLoading}
+              uploadedImage={uploadedImage}
+              onRemoveImage={() => setUploadedImage(null)}
+            />
+          </div>
         </div>
       </div>
       
