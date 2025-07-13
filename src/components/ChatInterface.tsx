@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, X, ChevronDown, LogOut, User, Zap, Bot, ArrowLeft, MessageSquare, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { UserProfile } from './UserProfile';
@@ -26,9 +26,9 @@ import DynamicText from './DynamicText';
 import { FadeInText } from './FadeInText';
 import { motion } from 'framer-motion';
 
-// Updated Firebase configuration with proper keys
+// Updated Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCB1DwFSwQLDOlUFtUvqOWPnI1HrP5E",
+  apiKey: "AIzaSyDdI2SCnKPY0j1YdTKKYwPy7PNXHyUNmUo",
   authDomain: "messenger-7c40c.firebaseapp.com",
   projectId: "messenger-7c40c",
   storageBucket: "messenger-7c40c.firebasestorage.app",
@@ -42,24 +42,28 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-// Configure Google provider to avoid popup issues
+// Configure Google provider
 googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
+
+// Groq API configuration
+const GROQ_API_KEY = "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";
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+// Updated models for Groq
+const MODELS = [
+  { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B (Default)' },
+  { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile' },
+  { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill 70B' },
+  { id: 'qwen-qwq-32b', name: 'Qwen QwQ 32B (Reasoning)' },
+];
 
 interface User {
   displayName: string;
   email: string;
   photoURL: string;
 }
-
-const MODELS = [
-  { id: 'mistralai/mistral-small-3.2-24b-instruct:free', name: 'Mistral Small (Default)' },
-  { id: 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free', name: 'Dolphin Mistral 24B' },
-  { id: 'deepseek/deepseek-r1-0528-qwen3-8b:free', name: 'DeepSeek R1 Qwen3' },
-  { id: 'mistralai/devstral-small-2505:free', name: 'Devstral Small' },
-  { id: 'sarvamai/sarvam-m:free', name: 'Sarvam-M (Reasoning)' },
-];
 
 const TypingAnimation = () => (
   <div className="flex items-center space-x-3 p-3">
@@ -325,22 +329,27 @@ const ChatInterface = () => {
     try {
       trackApiCall(selectedModel);
 
-      const response = await supabase.functions.invoke('chat-completion', {
-        body: {
+      const response = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           model: selectedModel,
           messages: [{ role: 'user', content: contentToSend }],
           max_tokens: 1000,
           temperature: 0.7,
-        },
+        }),
       });
 
-      if (response.error) {
-        throw new Error(response.error.message);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
       }
 
-      const data = response.data;
+      const data = await response.json();
       const assistantContent = data.choices[0].message.content;
-      const reasoning = selectedModel === 'sarvamai/sarvam-m:free' ? data.choices[0].message.reasoning : null;
+      const reasoning = selectedModel === 'qwen-qwq-32b' ? data.choices[0].message.reasoning : null;
 
       addMessage(conversationId, {
         role: 'assistant',
@@ -498,7 +507,7 @@ const ChatInterface = () => {
                       >
                         <ReasoningView 
                           reasoning={message.reasoning || ''} 
-                          isVisible={selectedModel === 'sarvamai/sarvam-m:free' && !!message.reasoning}
+                          isVisible={selectedModel === 'qwen-qwq-32b' && !!message.reasoning}
                         />
                         <div className="text-white whitespace-pre-wrap text-sm leading-relaxed">
                           <FadeInText text={message.content} />
