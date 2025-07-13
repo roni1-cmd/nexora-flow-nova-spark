@@ -200,6 +200,45 @@ const ChatInterface = () => {
 
   const { conversations, createConversation, addMessage, deleteConversation } = useConversations(user?.uid);
 
+  // Update document title based on conversation or user input
+  useEffect(() => {
+    if (input.trim()) {
+      const shortPrompt = input.slice(0, 30) + (input.length > 30 ? '...' : '');
+      document.title = `${shortPrompt} - nexora`;
+    } else if (currentConversationId) {
+      const currentConv = conversations.find(c => c.id === currentConversationId);
+      if (currentConv) {
+        document.title = `${currentConv.title} - nexora`;
+      } else {
+        document.title = 'nexora';
+      }
+    } else {
+      document.title = 'nexora';
+    }
+  }, [input, currentConversationId, conversations]);
+
+  // Handle paste events for image pasting
+  useEffect(() => {
+    const handlePaste = (event: ClipboardEvent) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            handleImageUpload(file);
+            event.preventDefault();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, []);
+
   // Get first name only
   const getFirstName = (fullName: string) => {
     return fullName.split(' ')[0];
