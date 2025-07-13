@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, X, ChevronDown, LogOut, User, Zap, Bot, ArrowLeft, MessageSquare, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,6 +21,7 @@ import CustomLoader from './CustomLoader';
 import ConfirmDialog from './ConfirmDialog';
 import AnimatedLoader from './AnimatedLoader';
 import DynamicText from './DynamicText';
+import { FadeInText } from './FadeInText';
 import { motion } from 'framer-motion';
 
 interface Message {
@@ -52,9 +52,9 @@ interface Conversation {
 
 const MODELS = [
   { id: 'mistralai/mistral-small-3.2-24b-instruct:free', name: 'Mistral Small (Default)' },
-  { id: 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free', name: 'DeepSeek R1T2 Chimera' },
-  { id: 'deepseek/deepseek-r1-0528-qwen3-8b:free', name: 'Cypher Alpha' },
-  { id: 'mistralai/devstral-small-2505:free', name: 'DeepSeek R1 Qwen3' },
+  { id: 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free', name: 'Dolphin Mistral 24B' },
+  { id: 'deepseek/deepseek-r1-0528-qwen3-8b:free', name: 'DeepSeek R1 Qwen3' },
+  { id: 'mistralai/devstral-small-2505:free', name: 'Devstral Small' },
   { id: 'sarvamai/sarvam-m:free', name: 'Sarvam-M (Reasoning)' },
 ];
 
@@ -107,35 +107,35 @@ const ImageModal = ({ imageUrl, onClose }: { imageUrl: string; onClose: () => vo
 
 // Enhanced Auth Screen Component
 const AuthScreen = () => (
-  <div className="flex h-screen bg-black text-white font-google-sans">
-    <div className="flex-1 flex items-center justify-center" style={{
+  <div className="flex min-h-screen bg-black text-white font-google-sans">
+    <div className="flex-1 flex items-center justify-center px-4 sm:px-8" style={{
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)'
     }}>
-      <div className="max-w-md p-8 text-center">
-        <h1 className="text-5xl font-bold mb-6 text-white">
+      <div className="max-w-md p-4 sm:p-8 text-center">
+        <h1 className="text-3xl sm:text-5xl font-bold mb-4 sm:mb-6 text-white">
           Transform<br />
           Your Business<br />
           with AI
         </h1>
-        <p className="text-xl text-white/90 leading-relaxed">
+        <p className="text-lg sm:text-xl text-white/90 leading-relaxed">
           Build magical AI experiences with open models on the fastest and most reliable AI platform.
         </p>
       </div>
     </div>
     
-    <div className="flex-1 flex items-center justify-center px-8">
+    <div className="flex-1 flex items-center justify-center px-4 sm:px-8">
       <div className="w-full max-w-md">
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-8">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex items-center gap-3 mb-6 sm:mb-8">
             <img 
               src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
               alt="nexora" 
-              className="w-8 h-8"
+              className="w-6 h-6 sm:w-8 sm:h-8"
             />
-            <span className="text-xl font-semibold text-white">nexora</span>
+            <span className="text-lg sm:text-xl font-semibold text-white">nexora</span>
           </div>
           
-          <h2 className="text-3xl font-bold text-white mb-2">Log In</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Log In</h2>
         </div>
         
         <div className="space-y-4">
@@ -143,7 +143,7 @@ const AuthScreen = () => (
             <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
             <input 
               type="email" 
-              className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base"
               placeholder="Enter your email"
             />
           </div>
@@ -155,12 +155,12 @@ const AuthScreen = () => (
             </div>
             <input 
               type="password" 
-              className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base"
               placeholder="Enter your password"
             />
           </div>
           
-          <button className="w-full bg-white text-black p-3 rounded-lg font-medium hover:bg-gray-100 transition-colors">
+          <button className="w-full bg-white text-black p-3 rounded-lg font-medium hover:bg-gray-100 transition-colors text-sm sm:text-base">
             Next
           </button>
           
@@ -171,7 +171,7 @@ const AuthScreen = () => (
               const provider = new GoogleAuthProvider();
               await signInWithPopup(auth, provider);
             }}
-            className="w-full flex items-center justify-center gap-3 p-3 border border-gray-700 rounded-lg bg-black hover:bg-gray-900 transition-all duration-200 text-white mb-4"
+            className="w-full flex items-center justify-center gap-3 p-3 border border-gray-700 rounded-lg bg-black hover:bg-gray-900 transition-all duration-200 text-white mb-4 text-sm sm:text-base"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -183,12 +183,12 @@ const AuthScreen = () => (
           </button>
           
           <div className="text-center">
-            <span className="text-gray-400">Don't have an account? </span>
-            <a href="#" className="text-purple-400 hover:text-purple-300 font-medium">Sign Up</a>
+            <span className="text-gray-400 text-sm">Don't have an account? </span>
+            <a href="#" className="text-purple-400 hover:text-purple-300 font-medium text-sm">Sign Up</a>
           </div>
         </div>
         
-        <div className="mt-8 text-center">
+        <div className="mt-6 sm:mt-8 text-center">
           <p className="text-xs text-gray-400 leading-relaxed">
             By signing up, you agree to our{' '}
             <a href="https://coreastarstroupe.netlify.app/terms-of-service" className="text-purple-400 hover:text-purple-300">terms of service</a>{' '}
@@ -217,6 +217,7 @@ const ChatInterface = () => {
   const [currentEssayContent, setCurrentEssayContent] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -227,6 +228,11 @@ const ChatInterface = () => {
     conversationId?: string;
     type: 'message' | 'conversation';
   }>({ isOpen: false, type: 'message' });
+
+  // Get first name only
+  const getFirstName = (fullName: string) => {
+    return fullName.split(' ')[0];
+  };
 
   // Load data from localStorage on mount
   useEffect(() => {
@@ -361,7 +367,7 @@ const ChatInterface = () => {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: data.choices[0].message.content,
-        reasoning: selectedModel === 'sarvamai/sarvam-m' ? data.choices[0].message.reasoning : undefined,
+        reasoning: selectedModel === 'sarvamai/sarvam-m:free' ? data.choices[0].message.reasoning : undefined,
         timestamp: new Date(),
       };
 
@@ -423,30 +429,24 @@ const ChatInterface = () => {
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
+        onCollapsedChange={setSidebarCollapsed}
       />
       
-      <div className="flex-1 flex flex-col overflow-hidden transition-all duration-300 sm:ml-16 lg:ml-64">
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-0 sm:ml-16 lg:ml-64'}`}>
         <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black">
           <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
-            <div className="flex items-center gap-3">
-              <img 
-                src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
-                alt="nexora" 
-                className="w-8 h-8"
-              />
-              <Select value={selectedModel} onValueChange={setSelectedModel}>
-                <SelectTrigger className="w-48 bg-gray-900 border-gray-700 text-white text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-900 border-gray-700 text-white">
-                  {MODELS.map((model) => (
-                    <SelectItem key={model.id} value={model.id} className="hover:bg-gray-800">
-                      {model.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger className="w-48 bg-gray-900 border-gray-700 text-white text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-900 border-gray-700 text-white">
+                {MODELS.map((model) => (
+                  <SelectItem key={model.id} value={model.id} className="hover:bg-gray-800">
+                    {model.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
@@ -459,7 +459,7 @@ const ChatInterface = () => {
                       {user.displayName.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-white text-sm md:text-base hidden md:block">{user.displayName}</span>
+                  <span className="text-white text-sm md:text-base hidden md:block">{getFirstName(user.displayName)}</span>
                   <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
                 </Button>
               </DropdownMenuTrigger>
@@ -475,13 +475,6 @@ const ChatInterface = () => {
                     <span className="font-medium">{user.displayName}</span>
                     <span className="text-xs text-gray-400">{user.email}</span>
                   </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => setShowProfile(true)}
-                  className="flex items-center space-x-2 hover:bg-gray-800"
-                >
-                  <User className="w-4 h-4" />
-                  <span>View Profile</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={async () => {
@@ -504,18 +497,18 @@ const ChatInterface = () => {
         
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {messages.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center px-4">
+            <div className={`flex-1 flex items-center justify-center px-4 ${sidebarCollapsed ? 'mx-auto max-w-4xl' : ''}`}>
               <div className="text-center">
                 <div className="flex items-center justify-center mb-6">
                   <DynamicText />
-                  <span className="text-2xl md:text-4xl font-light text-white ml-2">
-                    <span className="text-purple-400">{user.displayName}</span>
+                  <span className="text-2xl md:text-4xl font-light text-white ml-4">
+                    <span className="text-purple-400">{getFirstName(user.displayName)}</span>
                   </span>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide" ref={scrollAreaRef}>
+            <div className={`flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide ${sidebarCollapsed ? 'mx-auto max-w-4xl' : ''}`} ref={scrollAreaRef}>
               <div className="max-w-3xl mx-auto py-4 space-y-4 md:space-y-6">
                 {messages.map((message) => (
                   <div key={message.id} className="group">
@@ -541,14 +534,10 @@ const ChatInterface = () => {
                       >
                         <ReasoningView 
                           reasoning={message.reasoning || ''} 
-                          isVisible={selectedModel === 'sarvamai/sarvam-m' && !!message.reasoning}
+                          isVisible={selectedModel === 'sarvamai/sarvam-m:free' && !!message.reasoning}
                         />
                         <div className="text-white whitespace-pre-wrap text-sm leading-relaxed">
-                          <div 
-                            dangerouslySetInnerHTML={{ 
-                              __html: formatMarkdown(message.content) 
-                            }} 
-                          />
+                          <FadeInText text={message.content} />
                         </div>
                       </motion.div>
                     )}
@@ -580,7 +569,7 @@ const ChatInterface = () => {
           )}
         </div>
         
-        <div className="px-2 md:px-4 pb-4 md:pb-6 pt-2 bg-black relative z-10">
+        <div className={`px-2 md:px-4 pb-4 md:pb-6 pt-2 bg-black relative z-10 ${sidebarCollapsed ? 'mx-auto max-w-4xl' : ''}`}>
           <AIPromptInput
             value={input}
             onChange={setInput}

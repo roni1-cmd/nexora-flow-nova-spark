@@ -23,6 +23,7 @@ interface AppSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onToggle: () => void;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
@@ -34,9 +35,16 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   isOpen,
   onClose,
   onToggle,
+  onCollapsedChange,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const handleCollapse = () => {
+    const newCollapsed = !isCollapsed;
+    setIsCollapsed(newCollapsed);
+    onCollapsedChange?.(newCollapsed);
+  };
 
   const formatDate = (date: Date) => {
     const now = new Date();
@@ -79,7 +87,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed top-0 left-0 z-40 h-screen transition-all duration-300 bg-black border-r border-gray-800",
+          "fixed top-0 left-0 z-40 h-screen transition-all duration-300 bg-black",
           sidebarWidth,
           isOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"
         )}
@@ -100,7 +108,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             
             {/* Collapse Toggle */}
             <Button
-              onClick={() => setIsCollapsed(!isCollapsed)}
+              onClick={handleCollapse}
               variant="ghost"
               size="sm"
               className="hidden sm:flex text-white hover:bg-gray-800 p-2"
@@ -210,7 +218,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
           {/* Enhanced CTA Section */}
           {!isCollapsed && (
-            <div className="p-4 rounded-lg bg-gradient-to-br from-purple-900/30 to-blue-900/20 border border-purple-500/30">
+            <div className="p-4 rounded-lg bg-gradient-to-br from-purple-900/30 to-blue-900/20">
               <div className="flex items-center mb-3">
                 <Crown className="w-4 h-4 text-purple-400 mr-2" />
                 <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent text-sm font-bold">
@@ -218,23 +226,20 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 </span>
               </div>
               
-              <div className="space-y-2 mb-4">
+              <div className="space-y-2">
                 <div className="flex items-center text-xs text-purple-200">
                   <Zap className="w-3 h-3 mr-2 text-purple-400" />
-                  <span>Now with reasoning mode with nexora Cortex-Cerebruc 24b.</span>
+                  <span>Now with reasoning mode with Sarvam-M.</span>
                 </div>
                 <div className="flex items-center text-xs text-purple-200">
                   <Sparkles className="w-3 h-3 mr-2 text-purple-400" />
-                  <span>Searching the web with Wikipedia and summarize important key pointers.</span>
+                  <span>Multiple AI models available for different tasks.</span>
+                </div>
+                <div className="flex items-center text-xs text-purple-200">
+                  <Bot className="w-3 h-3 mr-2 text-purple-400" />
+                  <span>Enhanced chat experience with fade-in responses.</span>
                 </div>
               </div>
-              
-              <Button 
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm border-0 shadow-lg"
-                onClick={() => window.open('https://coreastarstroupe.netlify.app/pricing', '_blank')}
-              >
-                Upgrade Now
-              </Button>
             </div>
           )}
         </div>

@@ -61,7 +61,7 @@ const DynamicText = () => {
     };
 
     return (
-        <div className="relative h-16 w-60 flex items-center justify-center overflow-visible">
+        <div className="relative h-16 w-48 flex items-center justify-center overflow-visible">
             {isAnimating ? (
                 <AnimatePresence mode="popLayout">
                     <motion.div
