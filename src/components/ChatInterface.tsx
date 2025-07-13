@@ -259,13 +259,22 @@ const ChatInterface = () => {
 
   // Load current conversation messages
   useEffect(() => {
+    console.log('Loading messages for conversation:', currentConversationId);
+    console.log('Available conversations:', conversations);
+    
     if (currentConversationId) {
       const conversation = conversations.find(c => c.id === currentConversationId);
-      if (conversation) {
-        console.log('Loading conversation messages:', conversation.messages);
+      console.log('Found conversation:', conversation);
+      
+      if (conversation && conversation.messages) {
+        console.log('Setting messages:', conversation.messages);
         setMessages(conversation.messages);
+      } else {
+        console.log('No messages found, setting empty array');
+        setMessages([]);
       }
     } else {
+      console.log('No current conversation, clearing messages');
       setMessages([]);
     }
   }, [currentConversationId, conversations]);
