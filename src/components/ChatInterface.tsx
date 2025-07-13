@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, X, ChevronDown, LogOut, User, Zap, Bot, ArrowLeft, MessageSquare, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -111,7 +112,7 @@ const NameInputScreen = ({ onNameSubmit }: { onNameSubmit: (name: string) => voi
             </div>
             
             <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Welcome</h2>
-            <p className="text-gray-400 mb-6">Please enter your name to get started</p>
+            <p className="text-gray-400 mb-6">Put your name here</p>
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -162,6 +163,7 @@ const ChatInterface = () => {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [appLoading, setAppLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -206,11 +208,15 @@ const ChatInterface = () => {
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem('nexora_user');
-    setUser(null);
-    setMessages([]);
-    setCurrentConversationId(null);
-    setShowProfile(false);
+    setAppLoading(true);
+    setTimeout(() => {
+      localStorage.removeItem('nexora_user');
+      setUser(null);
+      setMessages([]);
+      setCurrentConversationId(null);
+      setShowProfile(false);
+      setAppLoading(false);
+    }, 1000);
   };
 
   // Update document title based on conversation or user input
@@ -257,12 +263,12 @@ const ChatInterface = () => {
     return fullName.split(' ')[0];
   };
 
-  // Load current conversation messages
+  // Load current conversation messages - Fixed to handle race condition
   useEffect(() => {
     console.log('Loading messages for conversation:', currentConversationId);
     console.log('Available conversations:', conversations);
     
-    if (currentConversationId) {
+    if (currentConversationId && conversations.length > 0) {
       const conversation = conversations.find(c => c.id === currentConversationId);
       console.log('Found conversation:', conversation);
       
@@ -273,7 +279,7 @@ const ChatInterface = () => {
         console.log('No messages found, setting empty array');
         setMessages([]);
       }
-    } else {
+    } else if (!currentConversationId) {
       console.log('No current conversation, clearing messages');
       setMessages([]);
     }
@@ -384,7 +390,7 @@ const ChatInterface = () => {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || appLoading) {
     return <CustomLoader />;
   }
 
