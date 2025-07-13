@@ -6,8 +6,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { UserProfile } from './UserProfile';
 import { EssayCanvas } from './EssayCanvas';
 import { EssayModal } from './EssayModal';
@@ -15,6 +16,7 @@ import { ReasoningView } from './ReasoningView';
 import { MessageActions } from './MessageActions';
 import { AppSidebar } from './AppSidebar';
 import { useUsageTracking } from '@/hooks/useUsageTracking';
+import { useLocalConversations, type Message } from '@/hooks/useLocalConversations';
 import AIPromptInput from './AIPromptInput';
 import AITextLoading from './AITextLoading';
 import CustomLoader from './CustomLoader';
@@ -24,45 +26,9 @@ import DynamicText from './DynamicText';
 import { FadeInText } from './FadeInText';
 import { motion } from 'framer-motion';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  imageUrl?: string;
-  isCode?: boolean;
-  isEssay?: boolean;
-  reasoning?: string;
-  timestamp?: Date;
-}
-
-interface User {
-  displayName: string;
-  email: string;
-  photoURL: string;
-}
-
-interface Conversation {
-  id: string;
-  title: string;
-  lastMessage: string;
-  timestamp: Date;
-  messageCount: number;
-  messages: Message[];
-}
-
-const MODELS = [
-  { id: 'mistralai/mistral-small-3.2-24b-instruct:free', name: 'Mistral Small (Default)' },
-  { id: 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free', name: 'Dolphin Mistral 24B' },
-  { id: 'deepseek/deepseek-r1-0528-qwen3-8b:free', name: 'DeepSeek R1 Qwen3' },
-  { id: 'mistralai/devstral-small-2505:free', name: 'Devstral Small' },
-  { id: 'sarvamai/sarvam-m:free', name: 'Sarvam-M (Reasoning)' },
-];
-
-const API_KEY = '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';
-
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCB1DwFSwQLDOlUFtWQtUvqOWPnI1HrP5E",
+  apiKey: "AIzaSyCB1DwFSwQLDOlUFtUvqOWPnI1HrP5E",
   authDomain: "messenger-7c40c.firebaseapp.com",
   projectId: "messenger-7c40c",
   storageBucket: "messenger-7c40c.firebasestorage.app",
@@ -74,6 +40,21 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+interface User {
+  displayName: string;
+  email: string;
+  photoURL: string;
+}
+
+const MODELS = [
+  { id: 'mistralai/mistral-small-3.2-24b-instruct:free', name: 'Mistral Small (Default)' },
+  { id: 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free', name: 'Dolphin Mistral 24B' },
+  { id: 'deepseek/deepseek-r1-0528-qwen3-8b:free', name: 'DeepSeek R1 Qwen3' },
+  { id: 'mistralai/devstral-small-2505:free', name: 'Devstral Small' },
+  { id: 'sarvamai/sarvam-m:free', name: 'Sarvam-M (Reasoning)' },
+];
 
 const TypingAnimation = () => (
   <div className="flex items-center space-x-3 p-3">
@@ -108,7 +89,8 @@ const ImageModal = ({ imageUrl, onClose }: { imageUrl: string; onClose: () => vo
 // Enhanced Auth Screen Component
 const AuthScreen = () => (
   <div className="flex min-h-screen bg-black text-white font-google-sans">
-    <div className="flex-1 flex items-center justify-center px-4 sm:px-8" style={{
+    {/* Left side - show on desktop only */}
+    <div className="hidden lg:flex flex-1 items-center justify-center px-4 sm:px-8" style={{
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)'
     }}>
       <div className="max-w-md p-4 sm:p-8 text-center">
@@ -139,37 +121,13 @@ const AuthScreen = () => (
         </div>
         
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
-            <input 
-              type="email" 
-              className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base"
-              placeholder="Enter your email"
-            />
-          </div>
-          
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-gray-300">Password</label>
-              <a href="#" className="text-sm text-purple-400 hover:text-purple-300">Forgot Password?</a>
-            </div>
-            <input 
-              type="password" 
-              className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base"
-              placeholder="Enter your password"
-            />
-          </div>
-          
-          <button className="w-full bg-white text-black p-3 rounded-lg font-medium hover:bg-gray-100 transition-colors text-sm sm:text-base">
-            Next
-          </button>
-          
-          <div className="text-center text-gray-400 my-4">OR</div>
-          
           <button 
             onClick={async () => {
-              const provider = new GoogleAuthProvider();
-              await signInWithPopup(auth, provider);
+              try {
+                await signInWithPopup(auth, googleProvider);
+              } catch (error) {
+                console.error('Error signing in with Google:', error);
+              }
             }}
             className="w-full flex items-center justify-center gap-3 p-3 border border-gray-700 rounded-lg bg-black hover:bg-gray-900 transition-all duration-200 text-white mb-4 text-sm sm:text-base"
           >
@@ -202,9 +160,8 @@ const AuthScreen = () => (
 );
 
 const ChatInterface = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
@@ -229,75 +186,72 @@ const ChatInterface = () => {
     type: 'message' | 'conversation';
   }>({ isOpen: false, type: 'message' });
 
+  const { conversations, createConversation, addMessage, deleteConversation } = useLocalConversations();
+
+  // Update document title based on conversation or user input
+  useEffect(() => {
+    if (input.trim()) {
+      const shortPrompt = input.slice(0, 30) + (input.length > 30 ? '...' : '');
+      document.title = `${shortPrompt} - nexora`;
+    } else if (currentConversationId) {
+      const currentConv = conversations.find(c => c.id === currentConversationId);
+      if (currentConv) {
+        document.title = `${currentConv.title} - nexora`;
+      } else {
+        document.title = 'nexora';
+      }
+    } else {
+      document.title = 'nexora';
+    }
+  }, [input, currentConversationId, conversations]);
+
+  // Handle paste events for image pasting
+  useEffect(() => {
+    const handlePaste = (event: ClipboardEvent) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            handleImageUpload(file);
+            event.preventDefault();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, []);
+
   // Get first name only
   const getFirstName = (fullName: string) => {
     return fullName.split(' ')[0];
   };
 
-  // Load data from localStorage on mount
   useEffect(() => {
-    const savedConversations = localStorage.getItem('nexora-conversations');
-    const savedCurrentId = localStorage.getItem('nexora-current-conversation');
-    const savedModel = localStorage.getItem('nexora-selected-model');
-    
-    if (savedConversations) {
-      const parsedConversations = JSON.parse(savedConversations).map((conv: any) => ({
-        ...conv,
-        timestamp: new Date(conv.timestamp),
-        messages: conv.messages.map((msg: any) => ({
-          ...msg,
-          timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
-        }))
-      }));
-      setConversations(parsedConversations);
-    }
-    
-    if (savedCurrentId) {
-      setCurrentConversationId(savedCurrentId);
-      const conversation = conversations.find(c => c.id === savedCurrentId);
-      if (conversation) {
-        setMessages(conversation.messages);
-      }
-    }
-    
-    if (savedModel) {
-      setSelectedModel(savedModel);
-    }
-  }, []);
-
-  // Save to localStorage whenever data changes
-  useEffect(() => {
-    if (conversations.length > 0) {
-      localStorage.setItem('nexora-conversations', JSON.stringify(conversations));
-    }
-  }, [conversations]);
-
-  useEffect(() => {
-    if (currentConversationId) {
-      localStorage.setItem('nexora-current-conversation', currentConversationId);
-    }
-  }, [currentConversationId]);
-
-  useEffect(() => {
-    localStorage.setItem('nexora-selected-model', selectedModel);
-  }, [selectedModel]);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
-        setUser({
-          displayName: firebaseUser.displayName || 'User',
-          email: firebaseUser.email || '',
-          photoURL: firebaseUser.photoURL || ''
-        });
-      } else {
-        setUser(null);
-      }
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
       setAuthLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
+
+  // Load current conversation messages
+  useEffect(() => {
+    if (currentConversationId) {
+      const conversation = conversations.find(c => c.id === currentConversationId);
+      if (conversation) {
+        setMessages(conversation.messages);
+      }
+    } else {
+      setMessages([]);
+    }
+  }, [currentConversationId, conversations]);
 
   const handleImageUpload = (file: File) => {
     const reader = new FileReader();
@@ -310,69 +264,52 @@ const ChatInterface = () => {
   const sendMessage = async () => {
     const contentToSend = input;
     if (!contentToSend.trim() && !uploadedImage) return;
+    if (!user) return;
 
-    if (!currentConversationId) {
-      const newId = Date.now().toString();
-      const newConversation: Conversation = {
-        id: newId,
-        title: 'New Conversation',
-        lastMessage: '',
-        timestamp: new Date(),
-        messageCount: 0,
-        messages: []
-      };
-      setConversations(prev => [newConversation, ...prev]);
-      setCurrentConversationId(newId);
-      setMessages([]);
+    let conversationId = currentConversationId;
+    
+    if (!conversationId) {
+      const newConversation = createConversation();
+      conversationId = newConversation.id;
+      setCurrentConversationId(conversationId);
     }
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
+    const userMessage = addMessage(conversationId, {
       role: 'user',
       content: contentToSend,
       imageUrl: uploadedImage || undefined,
-      timestamp: new Date(),
-    };
+    });
 
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
     setInput('');
     setUploadedImage(null);
-
     setIsLoading(true);
 
     try {
       trackApiCall(selectedModel);
 
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const response = await supabase.functions.invoke('chat-completion', {
+        body: {
           model: selectedModel,
           messages: [{ role: 'user', content: contentToSend }],
           max_tokens: 1000,
           temperature: 0.7,
-        }),
+        },
       });
 
-      if (!response.ok) {
-        throw new Error(`API responded with status ${response.status}`);
+      if (response.error) {
+        throw new Error(response.error.message);
       }
 
-      const data = await response.json();
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.choices[0].message.content,
-        reasoning: selectedModel === 'sarvamai/sarvam-m:free' ? data.choices[0].message.reasoning : undefined,
-        timestamp: new Date(),
-      };
+      const data = response.data;
+      const assistantContent = data.choices[0].message.content;
+      const reasoning = selectedModel === 'sarvamai/sarvam-m:free' ? data.choices[0].message.reasoning : null;
 
-      const updatedMessages = [...newMessages, assistantMessage];
-      setMessages(updatedMessages);
+      addMessage(conversationId, {
+        role: 'assistant',
+        content: assistantContent,
+        reasoning: reasoning || undefined,
+      });
+
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -396,36 +333,23 @@ const ChatInterface = () => {
   return (
     <div className="flex h-screen bg-black text-white font-google-sans">
       <AppSidebar
-        conversations={conversations}
+        conversations={conversations.map(conv => ({
+          id: conv.id,
+          title: conv.title,
+          lastMessage: conv.messages[conv.messages.length - 1]?.content || '',
+          timestamp: new Date(conv.updated_at),
+          messageCount: conv.messages.length,
+          messages: conv.messages,
+        }))}
         currentConversationId={currentConversationId}
         onSelectConversation={(id) => {
-          const conversation = conversations.find(c => c.id === id);
-          if (conversation) {
-            setCurrentConversationId(id);
-            setMessages(conversation.messages);
-          }
+          setCurrentConversationId(id);
         }}
         onNewConversation={() => {
-          const newId = Date.now().toString();
-          const newConversation: Conversation = {
-            id: newId,
-            title: 'New Conversation',
-            lastMessage: '',
-            timestamp: new Date(),
-            messageCount: 0,
-            messages: []
-          };
-          setConversations(prev => [newConversation, ...prev]);
-          setCurrentConversationId(newId);
-          setMessages([]);
+          const newConversation = createConversation();
+          setCurrentConversationId(newConversation.id);
         }}
-        onDeleteConversation={(id) => {
-          setConversations(prev => prev.filter(c => c.id !== id));
-          if (currentConversationId === id) {
-            setCurrentConversationId(null);
-            setMessages([]);
-          }
-        }}
+        onDeleteConversation={deleteConversation}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -436,7 +360,7 @@ const ChatInterface = () => {
         <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black">
           <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
             <Select value={selectedModel} onValueChange={setSelectedModel}>
-              <SelectTrigger className="w-48 bg-gray-900 border-gray-700 text-white text-sm">
+              <SelectTrigger className="w-48 bg-transparent border-none text-white text-sm shadow-none">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-gray-900 border-gray-700 text-white">
@@ -454,25 +378,27 @@ const ChatInterface = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-1 md:space-x-2 hover:bg-gray-800 p-1 md:p-2">
                   <Avatar className="w-6 h-6 md:w-8 md:h-8">
-                    <AvatarImage src={user.photoURL} alt={user.displayName} />
+                    <AvatarImage src={user.photoURL || ''} alt={user.displayName || user.email || ''} />
                     <AvatarFallback className="bg-purple-600 text-white text-xs md:text-sm">
-                      {user.displayName.charAt(0)}
+                      {(user.displayName || user.email || 'U').charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-white text-sm md:text-base hidden md:block">{getFirstName(user.displayName)}</span>
+                  <span className="text-white text-sm md:text-base hidden md:block">
+                    {getFirstName(user.displayName || user.email || 'User')}
+                  </span>
                   <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white z-50" align="end">
                 <DropdownMenuItem className="flex items-center space-x-2 hover:bg-gray-800">
                   <Avatar className="w-6 h-6">
-                    <AvatarImage src={user.photoURL} alt={user.displayName} />
+                    <AvatarImage src={user.photoURL || ''} alt={user.displayName || user.email || ''} />
                     <AvatarFallback className="bg-purple-600 text-white text-xs">
-                      {user.displayName.charAt(0)}
+                      {(user.displayName || user.email || 'U').charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <span className="font-medium">{user.displayName}</span>
+                    <span className="font-medium">{user.displayName || user.email}</span>
                     <span className="text-xs text-gray-400">{user.email}</span>
                   </div>
                 </DropdownMenuItem>
@@ -480,10 +406,8 @@ const ChatInterface = () => {
                   onClick={async () => {
                     await signOut(auth);
                     setMessages([]);
-                    setConversations([]);
                     setCurrentConversationId(null);
                     setShowProfile(false);
-                    localStorage.clear();
                   }}
                   className="flex items-center space-x-2 hover:bg-gray-800 text-red-400"
                 >
@@ -497,18 +421,20 @@ const ChatInterface = () => {
         
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {messages.length === 0 ? (
-            <div className={`flex-1 flex items-center justify-center px-4 ${sidebarCollapsed ? 'mx-auto max-w-4xl' : ''}`}>
+            <div className="flex-1 flex items-center justify-center px-4">
               <div className="text-center">
                 <div className="flex items-center justify-center mb-6">
                   <DynamicText />
-                  <span className="text-2xl md:text-4xl font-light text-white ml-4">
-                    <span className="text-purple-400">{getFirstName(user.displayName)}</span>
+                  <span className="text-2xl md:text-4xl font-light text-white ml-2">
+                    <span className="text-purple-400">
+                      {getFirstName(user.displayName || user.email || 'User')}
+                    </span>
                   </span>
                 </div>
               </div>
             </div>
           ) : (
-            <div className={`flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide ${sidebarCollapsed ? 'mx-auto max-w-4xl' : ''}`} ref={scrollAreaRef}>
+            <div className="flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide" ref={scrollAreaRef}>
               <div className="max-w-3xl mx-auto py-4 space-y-4 md:space-y-6">
                 {messages.map((message) => (
                   <div key={message.id} className="group">
@@ -569,22 +495,28 @@ const ChatInterface = () => {
           )}
         </div>
         
-        <div className={`px-2 md:px-4 pb-4 md:pb-6 pt-2 bg-black relative z-10 ${sidebarCollapsed ? 'mx-auto max-w-4xl' : ''}`}>
-          <AIPromptInput
-            value={input}
-            onChange={setInput}
-            onSendMessage={sendMessage}
-            onImageUpload={handleImageUpload}
-            disabled={isLoading}
-            uploadedImage={uploadedImage}
-            onRemoveImage={() => setUploadedImage(null)}
-          />
+        <div className="px-2 md:px-4 pb-4 md:pb-6 pt-2 bg-black relative z-10">
+          <div className="max-w-4xl mx-auto">
+            <AIPromptInput
+              value={input}
+              onChange={setInput}
+              onSendMessage={sendMessage}
+              onImageUpload={handleImageUpload}
+              disabled={isLoading}
+              uploadedImage={uploadedImage}
+              onRemoveImage={() => setUploadedImage(null)}
+            />
+          </div>
         </div>
       </div>
       
       {showProfile && (
         <UserProfile 
-          user={user}
+          user={{
+            displayName: user.displayName || user.email || 'User',
+            email: user.email || '',
+            photoURL: user.photoURL || '',
+          }}
         />
       )}
       <EssayModal
