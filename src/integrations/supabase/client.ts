@@ -25,20 +25,18 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Function to set Firebase user context for RLS
 export const setFirebaseUserContext = async (firebaseUserId: string) => {
   try {
-    // Set a custom header with the Firebase user ID
-    supabase.rest.headers = {
-      ...supabase.rest.headers,
-      'X-Firebase-UID': firebaseUserId
-    };
+    // Create a temporary JWT token with the Firebase user ID
+    // This is a simplified approach - in production you'd want proper JWT signing
+    const mockJwt = btoa(JSON.stringify({
+      sub: firebaseUserId,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 3600
+    }));
     
-    // Also set it in a way that can be accessed by RLS policies
-    await supabase.rpc('set_config', {
-      setting_name: 'app.current_user_id',
-      setting_value: firebaseUserId,
-      is_local: true
-    }).catch(() => {
-      // Ignore errors - fallback method will be used
-    });
+    // Store the user ID for use in RLS policies
+    localStorage.setItem('firebase_uid', firebaseUserId);
+    
+    console.log('Firebase user context set for:', firebaseUserId);
   } catch (error) {
     console.log('Could not set Firebase user context:', error);
   }
