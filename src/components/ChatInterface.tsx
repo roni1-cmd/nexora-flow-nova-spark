@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, X, ChevronDown, LogOut, User, Zap, Bot, ArrowLeft, MessageSquare, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,8 +6,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { UserProfile } from './UserProfile';
 import { EssayCanvas } from './EssayCanvas';
 import { EssayModal } from './EssayModal';
@@ -26,27 +23,6 @@ import DynamicText from './DynamicText';
 import { FadeInText } from './FadeInText';
 import { motion } from 'framer-motion';
 
-// Updated Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyDdI2SCnKPY0j1YdTKKYwPy7PNXHyUNmUo",
-  authDomain: "messenger-7c40c.firebaseapp.com",
-  projectId: "messenger-7c40c",
-  storageBucket: "messenger-7c40c.firebasestorage.app",
-  messagingSenderId: "435817942279",
-  appId: "1:435817942279:web:36b3f65e6358d8aa0a49a2",
-  measurementId: "G-HJ094HC4F2"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
-
-// Configure Google provider
-googleProvider.setCustomParameters({
-  prompt: 'select_account'
-});
-
 // Groq API configuration
 const GROQ_API_KEY = "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";
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -59,10 +35,8 @@ const MODELS = [
   { id: 'qwen-qwq-32b', name: 'Qwen QwQ 32B (Reasoning)' },
 ];
 
-interface User {
-  displayName: string;
-  email: string;
-  photoURL: string;
+interface SimpleUser {
+  name: string;
 }
 
 const TypingAnimation = () => (
@@ -95,40 +69,21 @@ const ImageModal = ({ imageUrl, onClose }: { imageUrl: string; onClose: () => vo
   </div>
 );
 
-// Enhanced Auth Screen Component
-const AuthScreen = () => {
-  const [isSigningIn, setIsSigningIn] = useState(false);
-  const { toast } = useToast();
+// Simple Auth Screen Component
+const AuthScreen = ({ onLogin }: { onLogin: (name: string) => void }) => {
+  const [name, setName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleGoogleSignIn = async () => {
-    if (isSigningIn) return;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
     
-    setIsSigningIn(true);
-    try {
-      console.log('Attempting Google sign-in...');
-      await signInWithPopup(auth, googleProvider);
-      console.log('Google sign-in successful');
-    } catch (error: any) {
-      console.error('Error signing in with Google:', error);
-      
-      let errorMessage = "Failed to sign in. Please try again.";
-      
-      if (error.code === 'auth/popup-blocked') {
-        errorMessage = "Popup was blocked. Please allow popups for this site and try again.";
-      } else if (error.code === 'auth/popup-closed-by-user') {
-        errorMessage = "Sign-in was cancelled. Please try again.";
-      } else if (error.code === 'auth/network-request-failed') {
-        errorMessage = "Network error. Please check your connection and try again.";
-      }
-      
-      toast({
-        title: "Sign-in Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSigningIn(false);
-    }
+    setIsLoading(true);
+    // Simulate a brief loading period
+    setTimeout(() => {
+      onLogin(name.trim());
+      setIsLoading(false);
+    }, 500);
   };
 
   return (
@@ -160,52 +115,55 @@ const AuthScreen = () => {
               <span className="text-lg sm:text-xl font-semibold text-white">nexora</span>
             </div>
             
-            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Log In</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Welcome</h2>
+            <p className="text-gray-400">Enter your name to get started</p>
           </div>
           
-          <div className="space-y-4">
-            <button 
-              onClick={handleGoogleSignIn}
-              disabled={isSigningIn}
-              className="w-full flex items-center justify-center gap-3 p-3 border border-gray-700 rounded-lg bg-black hover:bg-gray-900 transition-all duration-200 text-white mb-4 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSigningIn ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-              )}
-              <span className="font-medium">
-                {isSigningIn ? 'Signing in...' : 'Continue with Google'}
-              </span>
-            </button>
-            
-            <div className="text-center">
-              <span className="text-gray-400 text-sm">Don't have an account? </span>
-              <a href="#" className="text-purple-400 hover:text-purple-300 font-medium text-sm">Sign Up</a>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
+                className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                disabled={isLoading}
+              />
             </div>
-          </div>
-          
-          <div className="mt-6 sm:mt-8 text-center">
-            <p className="text-xs text-gray-400 leading-relaxed">
-              By signing up, you agree to our{' '}
-              <a href="https://coreastarstroupe.netlify.app/terms-of-service" className="text-purple-400 hover:text-purple-300">terms of service</a>{' '}
-              and{' '}
-              <a href="https://coreastarstroupe.netlify.app/privacy-policy" className="text-purple-400 hover:text-purple-300">Data Processing Agreement</a>
-            </p>
-          </div>
+            
+            <button 
+              type="submit"
+              disabled={!name.trim() || isLoading}
+              className="w-full p-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Getting started...
+                </div>
+              ) : (
+                'Continue'
+              )}
+            </button>
+          </form>
         </div>
       </div>
     </div>
   );
 };
 
+// Logout Loading Screen
+const LogoutScreen = () => (
+  <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
+    <div className="text-center">
+      <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+      <p className="text-white text-lg">Logging out...</p>
+    </div>
+  </div>
+);
+
 const ChatInterface = () => {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<SimpleUser | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
@@ -213,13 +171,13 @@ const ChatInterface = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
   const [essayModalOpen, setEssayModalOpen] = useState(false);
   const [currentEssayContent, setCurrentEssayContent] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -232,6 +190,33 @@ const ChatInterface = () => {
   }>({ isOpen: false, type: 'message' });
 
   const { conversations, createConversation, addMessage, deleteConversation } = useLocalConversations();
+
+  // Load user from localStorage
+  useEffect(() => {
+    const savedUser = localStorage.getItem('nexora_user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+  }, []);
+
+  const handleLogin = (name: string) => {
+    const newUser = { name };
+    setUser(newUser);
+    localStorage.setItem('nexora_user', JSON.stringify(newUser));
+  };
+
+  const handleLogout = () => {
+    setIsLoggingOut(true);
+    
+    setTimeout(() => {
+      setUser(null);
+      localStorage.removeItem('nexora_user');
+      setMessages([]);
+      setCurrentConversationId(null);
+      setShowProfile(false);
+      setIsLoggingOut(false);
+    }, 1000);
+  };
 
   useEffect(() => {
     if (input.trim()) {
@@ -273,16 +258,6 @@ const ChatInterface = () => {
   const getFirstName = (fullName: string) => {
     return fullName.split(' ')[0];
   };
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      console.log('Auth state changed:', firebaseUser ? 'User signed in' : 'User signed out');
-      setUser(firebaseUser);
-      setAuthLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   useEffect(() => {
     if (currentConversationId) {
@@ -369,12 +344,12 @@ const ChatInterface = () => {
     }
   };
 
-  if (authLoading) {
-    return <CustomLoader />;
+  if (!user) {
+    return <AuthScreen onLogin={handleLogin} />;
   }
 
-  if (!user) {
-    return <AuthScreen />;
+  if (isLoggingOut) {
+    return <LogoutScreen />;
   }
 
   return (
@@ -425,13 +400,12 @@ const ChatInterface = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-1 md:space-x-2 hover:bg-gray-800 p-1 md:p-2">
                   <Avatar className="w-6 h-6 md:w-8 md:h-8">
-                    <AvatarImage src={user.photoURL || ''} alt={user.displayName || user.email || ''} />
                     <AvatarFallback className="bg-purple-600 text-white text-xs md:text-sm">
-                      {(user.displayName || user.email || 'U').charAt(0)}
+                      {user.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-white text-sm md:text-base hidden md:block">
-                    {getFirstName(user.displayName || user.email || 'User')}
+                    {getFirstName(user.name)}
                   </span>
                   <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
                 </Button>
@@ -439,23 +413,16 @@ const ChatInterface = () => {
               <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white z-50" align="end">
                 <DropdownMenuItem className="flex items-center space-x-2 hover:bg-gray-800">
                   <Avatar className="w-6 h-6">
-                    <AvatarImage src={user.photoURL || ''} alt={user.displayName || user.email || ''} />
                     <AvatarFallback className="bg-purple-600 text-white text-xs">
-                      {(user.displayName || user.email || 'U').charAt(0)}
+                      {user.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <span className="font-medium">{user.displayName || user.email}</span>
-                    <span className="text-xs text-gray-400">{user.email}</span>
+                    <span className="font-medium">{user.name}</span>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem 
-                  onClick={async () => {
-                    await signOut(auth);
-                    setMessages([]);
-                    setCurrentConversationId(null);
-                    setShowProfile(false);
-                  }}
+                  onClick={handleLogout}
                   className="flex items-center space-x-2 hover:bg-gray-800 text-red-400"
                 >
                   <LogOut className="w-4 h-4" />
@@ -474,7 +441,7 @@ const ChatInterface = () => {
                   <DynamicText />
                   <span className="text-2xl md:text-4xl font-light text-white ml-2">
                     <span className="text-purple-400">
-                      {getFirstName(user.displayName || user.email || 'User')}
+                      {getFirstName(user.name)}
                     </span>
                   </span>
                 </div>
@@ -560,9 +527,9 @@ const ChatInterface = () => {
       {showProfile && (
         <UserProfile 
           user={{
-            displayName: user.displayName || user.email || 'User',
-            email: user.email || '',
-            photoURL: user.photoURL || '',
+            displayName: user.name,
+            email: '',
+            photoURL: '',
           }}
         />
       )}
