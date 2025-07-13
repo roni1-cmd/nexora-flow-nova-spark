@@ -52,14 +52,13 @@ interface Conversation {
 
 const MODELS = [
   { id: 'mistralai/mistral-small-3.2-24b-instruct:free', name: 'Mistral Small (Default)' },
-  { id: 'tngtech/deepseek-r1t2-chimera', name: 'DeepSeek R1T2 Chimera' },
-  { id: 'openrouter/cypher-alpha', name: 'Cypher Alpha' },
-  { id: 'deepseek/deepseek-r1-0528-qwen3-8b', name: 'DeepSeek R1 Qwen3' },
-  { id: 'sarvamai/sarvam-m', name: 'Sarvam-M (Reasoning)' },
-  { id: 'microsoft/mai-ds-r1', name: 'Microsoft MAI-DS R1' },
+  { id: 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free', name: 'DeepSeek R1T2 Chimera' },
+  { id: 'deepseek/deepseek-r1-0528-qwen3-8b:free', name: 'Cypher Alpha' },
+  { id: 'mistralai/devstral-small-2505:free', name: 'DeepSeek R1 Qwen3' },
+  { id: 'sarvamai/sarvam-m:free', name: 'Sarvam-M (Reasoning)' },
 ];
 
-const API_KEY = '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';
+const API_KEY = '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';
 
 // Firebase configuration
 const firebaseConfig = {
