@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, X, ChevronDown, LogOut, User, Zap, Bot, ArrowLeft, MessageSquare, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -263,12 +262,20 @@ const ChatInterface = () => {
     if (currentConversationId) {
       const conversation = conversations.find(c => c.id === currentConversationId);
       if (conversation) {
+        console.log('Loading conversation messages:', conversation.messages);
         setMessages(conversation.messages);
       }
     } else {
       setMessages([]);
     }
   }, [currentConversationId, conversations]);
+
+  // Auto-scroll to bottom when new messages are added
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const handleImageUpload = (file: File) => {
     const reader = new FileReader();
@@ -278,30 +285,46 @@ const ChatInterface = () => {
     reader.readAsDataURL(file);
   };
 
+  const generateConversationTitle = (firstMessage: string) => {
+    // Generate a title from the first message (first 50 characters)
+    const title = firstMessage.slice(0, 50);
+    return title.length < firstMessage.length ? title + '...' : title;
+  };
+
   const sendMessage = async () => {
-    const contentToSend = input;
-    if (!contentToSend.trim() && !uploadedImage) return;
+    const contentToSend = input.trim();
+    if (!contentToSend && !uploadedImage) return;
     if (!user) return;
 
+    console.log('Sending message:', contentToSend);
+    
     let conversationId = currentConversationId;
     
+    // Create new conversation if none exists
     if (!conversationId) {
-      const newConversation = createConversation();
+      const title = generateConversationTitle(contentToSend);
+      const newConversation = createConversation(title);
       conversationId = newConversation.id;
       setCurrentConversationId(conversationId);
+      console.log('Created new conversation:', conversationId);
     }
 
+    // Add user message
     const userMessage = addMessage(conversationId, {
       role: 'user',
       content: contentToSend,
       imageUrl: uploadedImage || undefined,
     });
 
+    console.log('Added user message:', userMessage);
+
+    // Clear input immediately
     setInput('');
     setUploadedImage(null);
     setIsLoading(true);
 
     try {
+      console.log('Making API call with model:', selectedModel);
       trackApiCall(selectedModel);
 
       const response = await supabase.functions.invoke('chat-completion', {
@@ -313,6 +336,8 @@ const ChatInterface = () => {
         },
       });
 
+      console.log('API response:', response);
+
       if (response.error) {
         throw new Error(response.error.message);
       }
@@ -321,11 +346,16 @@ const ChatInterface = () => {
       const assistantContent = data.choices[0].message.content;
       const reasoning = selectedModel === 'sarvamai/sarvam-m:free' ? data.choices[0].message.reasoning : null;
 
-      addMessage(conversationId, {
+      console.log('Assistant response:', assistantContent);
+
+      // Add assistant message
+      const assistantMessage = addMessage(conversationId, {
         role: 'assistant',
         content: assistantContent,
         reasoning: reasoning || undefined,
       });
+
+      console.log('Added assistant message:', assistantMessage);
 
     } catch (error) {
       console.error('Error sending message:', error);
@@ -333,6 +363,12 @@ const ChatInterface = () => {
         title: "Error",
         description: "Failed to send message. Please try again.",
         variant: "destructive",
+      });
+      
+      // Add error message to help debug
+      addMessage(conversationId, {
+        role: 'assistant',
+        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
       });
     } finally {
       setIsLoading(false);
@@ -347,6 +383,9 @@ const ChatInterface = () => {
     return <NameInputScreen onNameSubmit={handleNameSubmit} />;
   }
 
+  console.log('Current messages:', messages);
+  console.log('Current conversations:', conversations);
+
   return (
     <div className="flex h-screen bg-black text-white font-google-sans">
       <AppSidebar
@@ -360,9 +399,11 @@ const ChatInterface = () => {
         }))}
         currentConversationId={currentConversationId}
         onSelectConversation={(id) => {
+          console.log('Selecting conversation:', id);
           setCurrentConversationId(id);
         }}
         onNewConversation={() => {
+          console.log('Creating new conversation');
           const newConversation = createConversation();
           setCurrentConversationId(newConversation.id);
         }}
@@ -458,6 +499,7 @@ const ChatInterface = () => {
                               src={message.imageUrl} 
                               alt="Uploaded" 
                               className="max-w-full rounded-lg mb-2"
+                              onClick={() => setFullScreenImage(message.imageUrl!)}
                             />
                           )}
                           <p className="text-sm leading-relaxed">{message.content}</p>
