@@ -1,5 +1,3 @@
-
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, X, ChevronDown, LogOut, User, Zap, Bot, ArrowLeft, MessageSquare, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,9 +5,9 @@ import { Progress } from '@/components/ui/progress';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { UserProfile } from './UserProfile';
 import { EssayCanvas } from './EssayCanvas';
 import { EssayModal } from './EssayModal';
@@ -17,7 +15,6 @@ import { ReasoningView } from './ReasoningView';
 import { MessageActions } from './MessageActions';
 import { AppSidebar } from './AppSidebar';
 import { useUsageTracking } from '@/hooks/useUsageTracking';
-import { useLocalConversations, type Message } from '@/hooks/useLocalConversations';
 import AIPromptInput from './AIPromptInput';
 import AITextLoading from './AITextLoading';
 import CustomLoader from './CustomLoader';
@@ -27,10 +24,30 @@ import DynamicText from './DynamicText';
 import { FadeInText } from './FadeInText';
 import { motion } from 'framer-motion';
 
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  imageUrl?: string;
+  isCode?: boolean;
+  isEssay?: boolean;
+  reasoning?: string;
+  timestamp?: Date;
+}
+
 interface User {
   displayName: string;
   email: string;
   photoURL: string;
+}
+
+interface Conversation {
+  id: string;
+  title: string;
+  lastMessage: string;
+  timestamp: Date;
+  messageCount: number;
+  messages: Message[];
 }
 
 const MODELS = [
@@ -40,6 +57,23 @@ const MODELS = [
   { id: 'mistralai/devstral-small-2505:free', name: 'Devstral Small' },
   { id: 'sarvamai/sarvam-m:free', name: 'Sarvam-M (Reasoning)' },
 ];
+
+const API_KEY = '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';
+
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCB1DwFSwQLDOlUFtWQtUvqOWPnI1HrP5E",
+  authDomain: "messenger-7c40c.firebaseapp.com",
+  projectId: "messenger-7c40c",
+  storageBucket: "messenger-7c40c.firebasestorage.app",
+  messagingSenderId: "435817942279",
+  appId: "1:435817942279:web:36b3f65e6358d8aa0a49a2",
+  measurementId: "G-HJ094HC4F2"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
 const TypingAnimation = () => (
   <div className="flex items-center space-x-3 p-3">
@@ -71,86 +105,106 @@ const ImageModal = ({ imageUrl, onClose }: { imageUrl: string; onClose: () => vo
   </div>
 );
 
-// Name Input Screen Component
-const NameInputScreen = ({ onNameSubmit }: { onNameSubmit: (name: string) => void }) => {
-  const [name, setName] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (name.trim()) {
-      onNameSubmit(name.trim());
-    }
-  };
-
-  return (
-    <div className="flex min-h-screen bg-black text-white font-google-sans">
-      {/* Left side - show on desktop only */}
-      <div className="hidden lg:flex flex-1 items-center justify-center px-4 sm:px-8" style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)'
-      }}>
-        <div className="max-w-md p-4 sm:p-8 text-center">
-          <h1 className="text-3xl sm:text-5xl font-bold mb-4 sm:mb-6 text-white">
-            Transform<br />
-            Your Business<br />
-            with AI
-          </h1>
-          <p className="text-lg sm:text-xl text-white/90 leading-relaxed">
-            Build magical AI experiences with open models on the fastest and most reliable AI platform.
+// Enhanced Auth Screen Component
+const AuthScreen = () => (
+  <div className="flex min-h-screen bg-black text-white font-google-sans">
+    <div className="flex-1 flex items-center justify-center px-4 sm:px-8" style={{
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)'
+    }}>
+      <div className="max-w-md p-4 sm:p-8 text-center">
+        <h1 className="text-3xl sm:text-5xl font-bold mb-4 sm:mb-6 text-white">
+          Transform<br />
+          Your Business<br />
+          with AI
+        </h1>
+        <p className="text-lg sm:text-xl text-white/90 leading-relaxed">
+          Build magical AI experiences with open models on the fastest and most reliable AI platform.
+        </p>
+      </div>
+    </div>
+    
+    <div className="flex-1 flex items-center justify-center px-4 sm:px-8">
+      <div className="w-full max-w-md">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex items-center gap-3 mb-6 sm:mb-8">
+            <img 
+              src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
+              alt="nexora" 
+              className="w-6 h-6 sm:w-8 sm:h-8"
+            />
+            <span className="text-lg sm:text-xl font-semibold text-white">nexora</span>
+          </div>
+          
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Log In</h2>
+        </div>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+            <input 
+              type="email" 
+              className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base"
+              placeholder="Enter your email"
+            />
+          </div>
+          
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-300">Password</label>
+              <a href="#" className="text-sm text-purple-400 hover:text-purple-300">Forgot Password?</a>
+            </div>
+            <input 
+              type="password" 
+              className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base"
+              placeholder="Enter your password"
+            />
+          </div>
+          
+          <button className="w-full bg-white text-black p-3 rounded-lg font-medium hover:bg-gray-100 transition-colors text-sm sm:text-base">
+            Next
+          </button>
+          
+          <div className="text-center text-gray-400 my-4">OR</div>
+          
+          <button 
+            onClick={async () => {
+              const provider = new GoogleAuthProvider();
+              await signInWithPopup(auth, provider);
+            }}
+            className="w-full flex items-center justify-center gap-3 p-3 border border-gray-700 rounded-lg bg-black hover:bg-gray-900 transition-all duration-200 text-white mb-4 text-sm sm:text-base"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            <span className="font-medium">Continue with Google</span>
+          </button>
+          
+          <div className="text-center">
+            <span className="text-gray-400 text-sm">Don't have an account? </span>
+            <a href="#" className="text-purple-400 hover:text-purple-300 font-medium text-sm">Sign Up</a>
+          </div>
+        </div>
+        
+        <div className="mt-6 sm:mt-8 text-center">
+          <p className="text-xs text-gray-400 leading-relaxed">
+            By signing up, you agree to our{' '}
+            <a href="https://coreastarstroupe.netlify.app/terms-of-service" className="text-purple-400 hover:text-purple-300">terms of service</a>{' '}
+            and{' '}
+            <a href="https://coreastarstroupe.netlify.app/privacy-policy" className="text-purple-400 hover:text-purple-300">Data Processing Agreement</a>
           </p>
         </div>
       </div>
-      
-      <div className="flex-1 flex items-center justify-center px-4 sm:px-8">
-        <div className="w-full max-w-md">
-          <div className="mb-6 sm:mb-8">
-            <div className="flex items-center gap-3 mb-6 sm:mb-8">
-              <img 
-                src="/lovable-uploads/ae2c56ce-3b9e-4596-bd03-b70dd5af1d5e.png" 
-                alt="nexora" 
-                className="w-6 h-6 sm:w-8 sm:h-8"
-              />
-              <span className="text-lg sm:text-xl font-semibold text-white">nexora</span>
-            </div>
-            
-            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Welcome</h2>
-            <p className="text-gray-400 mb-6">Put your name here</p>
-          </div>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              type="text"
-              placeholder="Put your name here"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full p-3 border border-gray-700 rounded-lg bg-black text-white placeholder:text-gray-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-              autoFocus
-            />
-            <Button 
-              type="submit"
-              disabled={!name.trim()}
-              className="w-full p-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Continue
-            </Button>
-          </form>
-          
-          <div className="mt-6 sm:mt-8 text-center">
-            <p className="text-xs text-gray-400 leading-relaxed">
-              By continuing, you agree to our{' '}
-              <a href="https://coreastarstroupe.netlify.app/terms-of-service" className="text-purple-400 hover:text-purple-300">terms of service</a>{' '}
-              and{' '}
-              <a href="https://coreastarstroupe.netlify.app/privacy-policy" className="text-purple-400 hover:text-purple-300">Data Processing Agreement</a>
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
-  );
-};
+  </div>
+);
 
 const ChatInterface = () => {
   const [user, setUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
@@ -164,7 +218,6 @@ const ChatInterface = () => {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [appLoading, setAppLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -176,122 +229,75 @@ const ChatInterface = () => {
     type: 'message' | 'conversation';
   }>({ isOpen: false, type: 'message' });
 
-  const { conversations, createConversation, addMessage, deleteConversation } = useLocalConversations();
-
-  // Check for saved user on mount
-  useEffect(() => {
-    const savedUser = localStorage.getItem('nexora_user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (error) {
-        console.error('Error parsing saved user:', error);
-        localStorage.removeItem('nexora_user');
-      }
-    }
-    setAuthLoading(false);
-  }, []);
-
-  // Save user to localStorage when user changes
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('nexora_user', JSON.stringify(user));
-    }
-  }, [user]);
-
-  const handleNameSubmit = (name: string) => {
-    const newUser: User = {
-      displayName: name,
-      email: `${name.toLowerCase().replace(/\s+/g, '')}@nexora.local`,
-      photoURL: '',
-    };
-    setUser(newUser);
-  };
-
-  const handleSignOut = () => {
-    setAppLoading(true);
-    setTimeout(() => {
-      localStorage.removeItem('nexora_user');
-      setUser(null);
-      setMessages([]);
-      setCurrentConversationId(null);
-      setShowProfile(false);
-      setAppLoading(false);
-    }, 1000);
-  };
-
-  // Update document title based on conversation or user input
-  useEffect(() => {
-    if (input.trim()) {
-      const shortPrompt = input.slice(0, 30) + (input.length > 30 ? '...' : '');
-      document.title = `${shortPrompt} - nexora`;
-    } else if (currentConversationId) {
-      const currentConv = conversations.find(c => c.id === currentConversationId);
-      if (currentConv) {
-        document.title = `${currentConv.title} - nexora`;
-      } else {
-        document.title = 'nexora';
-      }
-    } else {
-      document.title = 'nexora';
-    }
-  }, [input, currentConversationId, conversations]);
-
-  // Handle paste events for image pasting
-  useEffect(() => {
-    const handlePaste = (event: ClipboardEvent) => {
-      const items = event.clipboardData?.items;
-      if (!items) return;
-
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.type.indexOf('image') !== -1) {
-          const file = item.getAsFile();
-          if (file) {
-            handleImageUpload(file);
-            event.preventDefault();
-          }
-        }
-      }
-    };
-
-    document.addEventListener('paste', handlePaste);
-    return () => document.removeEventListener('paste', handlePaste);
-  }, []);
-
   // Get first name only
   const getFirstName = (fullName: string) => {
     return fullName.split(' ')[0];
   };
 
-  // Load current conversation messages - Fixed to handle direct conversation updates
+  // Load data from localStorage on mount
   useEffect(() => {
-    console.log('Loading messages for conversation:', currentConversationId);
-    console.log('Available conversations:', conversations);
+    const savedConversations = localStorage.getItem('nexora-conversations');
+    const savedCurrentId = localStorage.getItem('nexora-current-conversation');
+    const savedModel = localStorage.getItem('nexora-selected-model');
     
-    if (currentConversationId) {
-      const conversation = conversations.find(c => c.id === currentConversationId);
-      console.log('Found conversation:', conversation);
-      
-      if (conversation && conversation.messages) {
-        console.log('Setting messages:', conversation.messages);
+    if (savedConversations) {
+      const parsedConversations = JSON.parse(savedConversations).map((conv: any) => ({
+        ...conv,
+        timestamp: new Date(conv.timestamp),
+        messages: conv.messages.map((msg: any) => ({
+          ...msg,
+          timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+        }))
+      }));
+      setConversations(parsedConversations);
+    }
+    
+    if (savedCurrentId) {
+      setCurrentConversationId(savedCurrentId);
+      const conversation = conversations.find(c => c.id === savedCurrentId);
+      if (conversation) {
         setMessages(conversation.messages);
-      } else {
-        console.log('No messages found, setting empty array');
-        setMessages([]);
       }
-    } else {
-      console.log('No current conversation, clearing messages');
-      setMessages([]);
     }
-  }, [currentConversationId, conversations]);
+    
+    if (savedModel) {
+      setSelectedModel(savedModel);
+    }
+  }, []);
 
-  // Auto-scroll to bottom when new messages are added
+  // Save to localStorage whenever data changes
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    if (conversations.length > 0) {
+      localStorage.setItem('nexora-conversations', JSON.stringify(conversations));
     }
-  }, [messages]);
+  }, [conversations]);
+
+  useEffect(() => {
+    if (currentConversationId) {
+      localStorage.setItem('nexora-current-conversation', currentConversationId);
+    }
+  }, [currentConversationId]);
+
+  useEffect(() => {
+    localStorage.setItem('nexora-selected-model', selectedModel);
+  }, [selectedModel]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        setUser({
+          displayName: firebaseUser.displayName || 'User',
+          email: firebaseUser.email || '',
+          photoURL: firebaseUser.photoURL || ''
+        });
+      } else {
+        setUser(null);
+      }
+      setAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleImageUpload = (file: File) => {
     const reader = new FileReader();
@@ -301,90 +307,72 @@ const ChatInterface = () => {
     reader.readAsDataURL(file);
   };
 
-  const generateConversationTitle = (firstMessage: string) => {
-    // Generate a title from the first message (first 50 characters)
-    const title = firstMessage.slice(0, 50);
-    return title.length < firstMessage.length ? title + '...' : title;
-  };
-
   const sendMessage = async () => {
-    const contentToSend = input.trim();
-    if (!contentToSend && !uploadedImage) return;
-    if (!user) return;
+    const contentToSend = input;
+    if (!contentToSend.trim() && !uploadedImage) return;
 
-    console.log('Sending message:', contentToSend);
-    
-    let conversationId = currentConversationId;
-    
-    // Create new conversation if none exists
-    if (!conversationId) {
-      const title = generateConversationTitle(contentToSend);
-      const newConversation = createConversation(title);
-      conversationId = newConversation.id;
-      setCurrentConversationId(conversationId);
-      console.log('Created new conversation:', conversationId);
+    if (!currentConversationId) {
+      const newId = Date.now().toString();
+      const newConversation: Conversation = {
+        id: newId,
+        title: 'New Conversation',
+        lastMessage: '',
+        timestamp: new Date(),
+        messageCount: 0,
+        messages: []
+      };
+      setConversations(prev => [newConversation, ...prev]);
+      setCurrentConversationId(newId);
+      setMessages([]);
     }
 
-    // Add user message and immediately update local state
-    const userMessage = addMessage(conversationId, {
+    const userMessage: Message = {
+      id: Date.now().toString(),
       role: 'user',
       content: contentToSend,
       imageUrl: uploadedImage || undefined,
-    });
+      timestamp: new Date(),
+    };
 
-    console.log('Added user message:', userMessage);
-
-    // Update messages immediately for better UX
-    const updatedConversation = conversations.find(c => c.id === conversationId);
-    if (updatedConversation) {
-      setMessages(updatedConversation.messages);
-    }
-
-    // Clear input immediately
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setInput('');
     setUploadedImage(null);
+
     setIsLoading(true);
 
     try {
-      console.log('Making API call with model:', selectedModel);
       trackApiCall(selectedModel);
 
-      const response = await supabase.functions.invoke('chat-completion', {
-        body: {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           model: selectedModel,
           messages: [{ role: 'user', content: contentToSend }],
           max_tokens: 1000,
           temperature: 0.7,
-        },
+        }),
       });
 
-      console.log('API response:', response);
-
-      if (response.error) {
-        throw new Error(response.error.message);
+      if (!response.ok) {
+        throw new Error(`API responded with status ${response.status}`);
       }
 
-      const data = response.data;
-      const assistantContent = data.choices[0].message.content;
-      const reasoning = selectedModel === 'sarvamai/sarvam-m:free' ? data.choices[0].message.reasoning : null;
-
-      console.log('Assistant response:', assistantContent);
-
-      // Add assistant message
-      const assistantMessage = addMessage(conversationId, {
+      const data = await response.json();
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: assistantContent,
-        reasoning: reasoning || undefined,
-      });
+        content: data.choices[0].message.content,
+        reasoning: selectedModel === 'sarvamai/sarvam-m:free' ? data.choices[0].message.reasoning : undefined,
+        timestamp: new Date(),
+      };
 
-      console.log('Added assistant message:', assistantMessage);
-
-      // Update messages immediately for better UX
-      const finalConversation = conversations.find(c => c.id === conversationId);
-      if (finalConversation) {
-        setMessages(finalConversation.messages);
-      }
-
+      const updatedMessages = [...newMessages, assistantMessage];
+      setMessages(updatedMessages);
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -392,50 +380,52 @@ const ChatInterface = () => {
         description: "Failed to send message. Please try again.",
         variant: "destructive",
       });
-      
-      // Add error message to help debug
-      addMessage(conversationId, {
-        role: 'assistant',
-        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
-      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (authLoading || appLoading) {
+  if (authLoading) {
     return <CustomLoader />;
   }
 
   if (!user) {
-    return <NameInputScreen onNameSubmit={handleNameSubmit} />;
+    return <AuthScreen />;
   }
-
-  console.log('Current messages:', messages);
-  console.log('Current conversations:', conversations);
 
   return (
     <div className="flex h-screen bg-black text-white font-google-sans">
       <AppSidebar
-        conversations={conversations.map(conv => ({
-          id: conv.id,
-          title: conv.title,
-          lastMessage: conv.messages[conv.messages.length - 1]?.content || '',
-          timestamp: new Date(conv.updated_at),
-          messageCount: conv.messages.length,
-          messages: conv.messages,
-        }))}
+        conversations={conversations}
         currentConversationId={currentConversationId}
         onSelectConversation={(id) => {
-          console.log('Selecting conversation:', id);
-          setCurrentConversationId(id);
+          const conversation = conversations.find(c => c.id === id);
+          if (conversation) {
+            setCurrentConversationId(id);
+            setMessages(conversation.messages);
+          }
         }}
         onNewConversation={() => {
-          console.log('Creating new conversation');
-          const newConversation = createConversation();
-          setCurrentConversationId(newConversation.id);
+          const newId = Date.now().toString();
+          const newConversation: Conversation = {
+            id: newId,
+            title: 'New Conversation',
+            lastMessage: '',
+            timestamp: new Date(),
+            messageCount: 0,
+            messages: []
+          };
+          setConversations(prev => [newConversation, ...prev]);
+          setCurrentConversationId(newId);
+          setMessages([]);
         }}
-        onDeleteConversation={deleteConversation}
+        onDeleteConversation={(id) => {
+          setConversations(prev => prev.filter(c => c.id !== id));
+          if (currentConversationId === id) {
+            setCurrentConversationId(null);
+            setMessages([]);
+          }
+        }}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -446,7 +436,7 @@ const ChatInterface = () => {
         <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-black">
           <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
             <Select value={selectedModel} onValueChange={setSelectedModel}>
-              <SelectTrigger className="w-48 bg-transparent border-none text-white text-sm shadow-none">
+              <SelectTrigger className="w-48 bg-gray-900 border-gray-700 text-white text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-gray-900 border-gray-700 text-white">
@@ -464,32 +454,37 @@ const ChatInterface = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-1 md:space-x-2 hover:bg-gray-800 p-1 md:p-2">
                   <Avatar className="w-6 h-6 md:w-8 md:h-8">
-                    <AvatarImage src={user.photoURL || ''} alt={user.displayName || user.email || ''} />
+                    <AvatarImage src={user.photoURL} alt={user.displayName} />
                     <AvatarFallback className="bg-purple-600 text-white text-xs md:text-sm">
-                      {(user.displayName || user.email || 'U').charAt(0)}
+                      {user.displayName.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-white text-sm md:text-base hidden md:block">
-                    {getFirstName(user.displayName || user.email || 'User')}
-                  </span>
+                  <span className="text-white text-sm md:text-base hidden md:block">{getFirstName(user.displayName)}</span>
                   <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white z-50" align="end">
                 <DropdownMenuItem className="flex items-center space-x-2 hover:bg-gray-800">
                   <Avatar className="w-6 h-6">
-                    <AvatarImage src={user.photoURL || ''} alt={user.displayName || user.email || ''} />
+                    <AvatarImage src={user.photoURL} alt={user.displayName} />
                     <AvatarFallback className="bg-purple-600 text-white text-xs">
-                      {(user.displayName || user.email || 'U').charAt(0)}
+                      {user.displayName.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <span className="font-medium">{user.displayName || user.email}</span>
+                    <span className="font-medium">{user.displayName}</span>
                     <span className="text-xs text-gray-400">{user.email}</span>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem 
-                  onClick={handleSignOut}
+                  onClick={async () => {
+                    await signOut(auth);
+                    setMessages([]);
+                    setConversations([]);
+                    setCurrentConversationId(null);
+                    setShowProfile(false);
+                    localStorage.clear();
+                  }}
                   className="flex items-center space-x-2 hover:bg-gray-800 text-red-400"
                 >
                   <LogOut className="w-4 h-4" />
@@ -502,20 +497,18 @@ const ChatInterface = () => {
         
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {messages.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center px-4">
+            <div className={`flex-1 flex items-center justify-center px-4 ${sidebarCollapsed ? 'mx-auto max-w-4xl' : ''}`}>
               <div className="text-center">
                 <div className="flex items-center justify-center mb-6">
                   <DynamicText />
-                  <span className="text-2xl md:text-4xl font-light text-white ml-2">
-                    <span className="text-purple-400">
-                      {getFirstName(user.displayName || user.email || 'User')}
-                    </span>
+                  <span className="text-2xl md:text-4xl font-light text-white ml-4">
+                    <span className="text-purple-400">{getFirstName(user.displayName)}</span>
                   </span>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide" ref={scrollAreaRef}>
+            <div className={`flex-1 overflow-y-auto px-2 md:px-4 relative scrollbar-hide ${sidebarCollapsed ? 'mx-auto max-w-4xl' : ''}`} ref={scrollAreaRef}>
               <div className="max-w-3xl mx-auto py-4 space-y-4 md:space-y-6">
                 {messages.map((message) => (
                   <div key={message.id} className="group">
@@ -527,7 +520,6 @@ const ChatInterface = () => {
                               src={message.imageUrl} 
                               alt="Uploaded" 
                               className="max-w-full rounded-lg mb-2"
-                              onClick={() => setFullScreenImage(message.imageUrl!)}
                             />
                           )}
                           <p className="text-sm leading-relaxed">{message.content}</p>
@@ -577,28 +569,22 @@ const ChatInterface = () => {
           )}
         </div>
         
-        <div className="px-2 md:px-4 pb-4 md:pb-6 pt-2 bg-black relative z-10">
-          <div className="max-w-4xl mx-auto w-full">
-            <AIPromptInput
-              value={input}
-              onChange={setInput}
-              onSendMessage={sendMessage}
-              onImageUpload={handleImageUpload}
-              disabled={isLoading}
-              uploadedImage={uploadedImage}
-              onRemoveImage={() => setUploadedImage(null)}
-            />
-          </div>
+        <div className={`px-2 md:px-4 pb-4 md:pb-6 pt-2 bg-black relative z-10 ${sidebarCollapsed ? 'mx-auto max-w-4xl' : ''}`}>
+          <AIPromptInput
+            value={input}
+            onChange={setInput}
+            onSendMessage={sendMessage}
+            onImageUpload={handleImageUpload}
+            disabled={isLoading}
+            uploadedImage={uploadedImage}
+            onRemoveImage={() => setUploadedImage(null)}
+          />
         </div>
       </div>
       
       {showProfile && (
         <UserProfile 
-          user={{
-            displayName: user.displayName || user.email || 'User',
-            email: user.email || '',
-            photoURL: user.photoURL || '',
-          }}
+          user={user}
         />
       )}
       <EssayModal
@@ -632,4 +618,3 @@ const ChatInterface = () => {
 };
 
 export default ChatInterface;
-
