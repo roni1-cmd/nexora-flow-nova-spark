@@ -29,12 +29,13 @@ import { motion } from 'framer-motion';
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyB123456789", // You'll need to replace this with your actual config
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "your-app-id"
+  apiKey: "AIzaSyCB1DwFSwQLDOlUFtWQtUvqOWPnI1HrP5E",
+  authDomain: "messenger-7c40c.firebaseapp.com",
+  projectId: "messenger-7c40c",
+  storageBucket: "messenger-7c40c.firebasestorage.app",
+  messagingSenderId: "435817942279",
+  appId: "1:435817942279:web:36b3f65e6358d8aa0a49a2",
+  measurementId: "G-HJ094HC4F2"
 };
 
 // Initialize Firebase
